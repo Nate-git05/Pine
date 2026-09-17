@@ -13,7 +13,6 @@ class CustomerRegistration(BaseModel):
     #registration attributes 
     first_name:str = None 
     last_name:str = None 
-    username:str = None 
     email:EmailStr = None 
     phonenumber:PhoneNumber = None 
 
@@ -54,25 +53,12 @@ class CustomerRegistration(BaseModel):
 
         return name.title #returns the name capitalized 
 
-    @field_validator('username')
-    @classmethod
-    def username_check(cls, name:str) -> str:
-        name = name.strip() #stripping any leading/ending whitespace 
-        if not name:
-            raise ValueError('Please enter valid username.')
-
-        #checking the length of the name
-        if len(name) > 50:
-            raise ValueError('The username exceeds max amount of 50 characters.')
-
-        return name #returning the username 
-
     #validating the schema model 
     @model_validator(mode='after')
     def customer_registration_check(self):
         #checking if all fields entered 
         if not all([
-            self.first_name, self.last_name, self.username,
+            self.first_name, self.last_name,
             self.email, self.phonenumber
         ]):
             raise ValueError('All fields must be entered to continue.')
