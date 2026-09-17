@@ -64,3 +64,7 @@ class CustomerRegistration(BaseModel):
             raise ValueError('All fields must be entered to continue.')
 
         return self #returns the instance of the schema 
+
+#schema for the response to customer registration
+class CustomerRegistrationResponse(BaseModel):
+    response:str = None 

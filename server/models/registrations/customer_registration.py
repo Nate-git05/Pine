@@ -13,7 +13,7 @@ from pydantic_extra_types.phone_numbers import PhoneNumber
 from datetime import datetime
 
 """SQL model maps to table -> Postgres"""
-class CustomerRegisterModelS(Base):
+class CustomerRegisterModel(Base): 
     #defining attrbutes of the model 
     __tablename__ = 'customer_registration' #name for table in Postgres
 
