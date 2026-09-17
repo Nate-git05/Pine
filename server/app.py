@@ -2,6 +2,7 @@
 from fastapi import FastAPI
 from fastapi.requests import Request
 from server.config.configuration import (
+    PINENUMBER,
     POSTGRES_URI,
     CACHE_PORT,
     CACHE_URL
@@ -23,14 +24,18 @@ async def get_relational_db_session(request:Request):
         yield session
         break #yields only one session
 
-async def get_cache_db(request:Request):
+def get_cache_db(request:Request):
     return request.app.state.cache_database
 
 #getting the twilio client
-async def get_twilio_client(request:Request):
+def get_twilio_client(request:Request):
     api_wrapper:APIWrapper = request.app.state.api_wrapper
 
     return api_wrapper.configure_twilio_api() #returns client
+
+#getting the server's number 
+def get_servers_number(request:Request):
+    return request.app.state.server_number
 
 #app's lifespan function -> configures the servers attributes at startup time
 @asynccontextmanager
@@ -58,6 +63,8 @@ async def lifespan(app:FastAPI):
     #Starting up the servers api wrapper -> wraps apis used across server
     api_wrapper = APIWrapper()
     app.state.api_wrapper = api_wrapper
+
+    app.state.server_number = PINENUMBER #adding the server's number to the app state
 
     yield #yields the application running 
 
