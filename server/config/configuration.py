@@ -6,6 +6,11 @@ import os
 load_dotenv() #loading the .env variables -> to memory
 
 """Configuring the database's server info"""
+#Server's phonenumber
+PINENUMBER = os.getenv('PINENUMBER')
+if not PINENUMBER:
+    raise ValueError('Unable to retrieve the server\'s phonenumber from .env file.')
+
 #Relational -> Postgres
 class Base(DeclarativeBase):
     pass
