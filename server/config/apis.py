@@ -14,7 +14,7 @@ class APIWrapper:
     #configuring twilio api client
     def configure_twilio_api(self,account_sid=TWILIO_ACCOUNT_SID,
                              api_key=TWILIO_API_KEY,
-                             secret=TWILIO_SECRET):
+                             secret=TWILIO_SECRET) -> Client:
         self.twilio_client = Client(
                 username=api_key,
                 password=secret,

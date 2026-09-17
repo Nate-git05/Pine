@@ -10,6 +10,7 @@ from server.config.database import (
     RelationalDatabase,
     CacheDatabase
 )
+from server.config.apis import APIWrapper
 from contextlib import asynccontextmanager
 from redis.asyncio import RedisError
 
@@ -24,6 +25,12 @@ async def get_relational_db_session(request:Request):
 
 async def get_cache_db(request:Request):
     return request.app.state.cache_database
+
+#getting the twilio client
+async def get_twilio_client(request:Request):
+    api_wrapper:APIWrapper = request.app.state.api_wrapper
+
+    return api_wrapper.configure_twilio_api() #returns client
 
 #app's lifespan function -> configures the servers attributes at startup time
 @asynccontextmanager
@@ -47,6 +54,10 @@ async def lifespan(app:FastAPI):
         app.state.cache_database = cache_database
     except RedisError:
         raise RuntimeError('Unable to initialize the redis connection to the cache database')
+
+    #Starting up the servers api wrapper -> wraps apis used across server
+    api_wrapper = APIWrapper()
+    app.state.api_wrapper = api_wrapper
 
     yield #yields the application running 
 
