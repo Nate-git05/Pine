@@ -1,11 +1,17 @@
 #File for starting up the application for the server
 from fastapi import FastAPI
 from fastapi.requests import Request
-from server.config.configuration import POSTGRES_URI
+from server.config.configuration import (
+    POSTGRES_URI,
+    CACHE_PORT,
+    CACHE_URL
+)
 from server.config.database import (
-    RelationalDatabase
+    RelationalDatabase,
+    CacheDatabase
 )
 from contextlib import asynccontextmanager
+from redis.asyncio import RedisError
 
 #getter functions for retrieving app states
 async def get_relational_db_session(request:Request):
@@ -16,15 +22,31 @@ async def get_relational_db_session(request:Request):
         yield session
         break #yields only one session
 
+async def get_cache_db(request:Request):
+    return request.app.state.cache_database
 
 #app's lifespan function -> configures the servers attributes at startup time
 @asynccontextmanager
 async def lifespan(app:FastAPI):
+    """Starting the application's databases"""
     #configuring the servers relational database
-    relational_database = RelationalDatabase(
-        postgres_uri=POSTGRES_URI
-    )
-    app.state.relational_datbase = relational_database #setting the POstgres wrapper as state 
+    try:
+        relational_database = RelationalDatabase(
+            postgres_uri=POSTGRES_URI
+        )
+        app.state.relational_datbase = relational_database #setting the POstgres wrapper as state 
+    except Exception:
+        raise RuntimeError('Unable to connect and bind the Postgres uri to the relational mapper.')
+    
+    #configuring app's state for cache 
+    try:
+        cache_database = CacheDatabase(
+            cache_url=CACHE_URL,
+            cache_port=CACHE_PORT
+        )
+        app.state.cache_database = cache_database
+    except RedisError:
+        raise RuntimeError('Unable to initialize the redis connection to the cache database')
 
     yield #yields the application running 
 
