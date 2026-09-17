@@ -61,7 +61,7 @@ class CustomerRegistration(BaseModel):
             self.first_name, self.last_name,
             self.email, self.phonenumber
         ]):
-            raise ValueError('All fields must be entered to continue.')
+            raise ValueError('All fields must be entered to register.')
 
         return self #returns the instance of the schema 
 
