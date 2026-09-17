@@ -68,3 +68,25 @@ class CustomerSignup(BaseModel):
 #Schema for the customer signup route
 class CustomerSignupResponse(BaseModel):
     customer_token:str = None 
+    response:str = None 
+
+#Schema for the customer's verification code 
+class CustomerSMSVerify(BaseModel):
+    code:str = None 
+
+    @field_validator('code')
+    @classmethod
+    def code_check(cls, user_code:str) -> str:
+        user_code = user_code.strip() #stripping leadig/ending whitespace 
+        if not user_code:
+            raise ValueError('Please enter the verification code sent to you.')
+
+        #checking length of code 
+        if len(user_code) != 6:
+            raise ValueError('Verification is incorrect. Please try again.')
+
+        #ensuring code is only numbers 
+        if not user_code.isdigit():
+            raise ValueError('Verification is incorrect. Please try again.')
+
+        return user_code #returning code entered by customer
