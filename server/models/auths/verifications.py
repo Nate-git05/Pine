@@ -41,3 +41,15 @@ class SMSVerification(Base):
     created_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     verified_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    #property method for hashing the sms code 
+    @property
+    def code(self):
+        raise ValueError('Violation. Unable to retrieve customer\'s verification code.')
+
+    @code.setter
+    def code(self, value:str):
+        value_bytes = value.encode('utf-8')
+        salt = bcrypt.gensalt() #salt for the hash
+
+        self.verification_code = bcrypt.hashpw(value_bytes, salt)
