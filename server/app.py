@@ -13,6 +13,7 @@ from server.config.database import (
 )
 from server.config.apis import APIWrapper
 from contextlib import asynccontextmanager
+from pydantic_extra_types.phone_numbers import PhoneNumber
 from redis.asyncio import RedisError
 
 #getter functions for retrieving app states
@@ -35,7 +36,7 @@ def get_twilio_client(request:Request):
 
 #getting the server's number 
 def get_servers_number(request:Request):
-    return request.app.state.server_number
+    return PhoneNumber(request.app.state.server_number)
 
 #app's lifespan function -> configures the servers attributes at startup time
 @asynccontextmanager

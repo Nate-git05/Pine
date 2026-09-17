@@ -64,3 +64,7 @@ class CustomerSignup(BaseModel):
             raise ValueError('All fields are required to complete signup.')
 
         return self #returning the signup schema
+
+#Schema for the customer signup route
+class CustomerSignupResponse(BaseModel):
+    customer_token:str = None 
