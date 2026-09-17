@@ -2,6 +2,7 @@
 import string 
 import random
 from pydantic_extra_types.phone_numbers import PhoneNumber
+from twilio.rest import Client
 
 """Helper functions for the auth routes"""
 #function to generate user six digit code
@@ -11,6 +12,7 @@ def generate_code(limit:int=6):
     return code #returns random six digit num
 
 #function to send sms with twilio api
-def send_message(user_number:PhoneNumber, pine_number=_, body:str):
+def send_message(twilio_client:Client, user_number:PhoneNumber, 
+                 pine_number:PhoneNumber, body:str):
     pass
     
