@@ -29,8 +29,6 @@ async def get_relational_db_session(request:Request):
 def get_cache_db(request:Request):
     return request.app.state.cache_database
 
-#getting the twilio client
-def get_twilio_client(request:Request):
 def get_twilio_client(request:Request):
     api_wrapper:APIWrapper = request.app.state.api_wrapper
 
@@ -71,8 +69,8 @@ async def lifespan(app:FastAPI):
     api_wrapper = APIWrapper()
     app.state.api_wrapper = api_wrapper
 
+    #Getting the server private attributes 
     app.state.server_key = SERVER_SECRET_KEY
-
     app.state.server_number = PINENUMBER #adding the server's number to the app state
 
     yield #yields the application running 
