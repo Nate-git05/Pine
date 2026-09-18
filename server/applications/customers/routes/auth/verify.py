@@ -17,6 +17,7 @@ from server.models.auths.verifications import (
     SMSVerification,
     VerificationState
 )
+from server.models.auths.authentications import SessionAuthentication
 from server.config.database import CacheDatabase
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -114,5 +115,4 @@ async def customer_verify(customer_info:CustomerSMSVerify, customer_token:str,
             detail=''
         )
 
-    #creating customer's auth table
-    pass
+    
