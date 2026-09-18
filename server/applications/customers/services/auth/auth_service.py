@@ -14,5 +14,11 @@ def generate_code(limit:int=6):
 #function to send sms with twilio api
 def send_message(twilio_client:Client, user_number:PhoneNumber, 
                  pine_number:PhoneNumber, body:str):
-    pass
-    
+    try:
+        _ = twilio_client.messages.create(
+            to=pine_number,
+            from_=pine_number,
+            body=body
+        )
+    except RuntimeError as error:
+        raise error
