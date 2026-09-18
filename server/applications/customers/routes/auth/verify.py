@@ -104,14 +104,9 @@ async def customer_verify(customer_info:CustomerSMSVerify, customer_token:str,
         if customer_verification.verification_attempts >= 3:
             new_customer_code = generate_code()
             customer_verification.code = new_customer_code #setting new code hash in the verification
+            customer_verification.verification_attempts = 0
+            customer_verification.updated_at = datetime.now(timezone.utc)
             try:     
-                await session_db.execute(update(SMSVerification).where(
-                    SMSVerification.id == verification_id
-                ).values(
-                    verification_code=customer_verification.verification_code,
-                    verification_attempts=0,
-                    updated_at=datetime.now(timezone.utc)
-                ))
                 await session_db.commit()
             except Exception:
                 await session_db.rollback()
@@ -151,13 +146,8 @@ async def customer_verify(customer_info:CustomerSMSVerify, customer_token:str,
             )
 
         #updating the changes made to the row
+        customer_verification.updated_at = datetime.now(timezone.utc)
         try:
-            await session_db.execute(update(SMSVerification).where(
-                SMSVerification.id == verification_id
-            ).values(
-                verification_attempts=customer_verification.verification_attempts, 
-                updated_at=datetime.now(timezone.utc)
-            ))
             await session_db.commit()
         except Exception:
             await session_db.rollback()
@@ -226,4 +216,105 @@ async def customer_verify(customer_info:CustomerSMSVerify, customer_token:str,
     return CustomerSignupResponse(
         customer_token=str(customer_token),
         response=f'{new_customer.name}, congratulations! Your signup is successful.'
+    )
+
+"""Route for the customer to request a new code"""
+@customer_auth_router.patch('/verify/update/{customer_token}', response_model=CustomerSignupResponse)
+async def update_customer_code(customer_token:str, 
+                               session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
+                               cache_db:Annotated[CacheDatabase, Depends(get_cache_db)],
+                               twilio_client:Annotated[Client, Depends(get_twilio_client)],
+                               pine_number:Annotated[PhoneNumber, Depends(get_servers_number)]):
+    #retrieving the values from cache 
+    try:
+        customer_verification_id:str = await cache_db.retrieve(customer_token)
+        if not customer_verification_id:
+            raise HTTPException(
+                status_code=404,
+                detail='Verification session has expired or is invalid.'
+            )
+
+        customer_data_str = await cache_db.retrieve(customer_verification_id)
+        if not customer_data_str:
+            raise HTTPException(
+                status_code=404,
+                detail='Signup session data not found.'
+            )
+    except RedisError:
+        raise HTTPException(
+            status_code=500,
+            detail='Temporary cache service interruption. Please try again.'
+        )
+
+    #casting the verification id str -> UUID
+    try:
+        verification_id = UUID(customer_verification_id)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail='Malformed verification identifier format.'
+        )
+
+    #database query for the customer verification
+    try:
+        customer_verification_query = await session_db.execute(select(SMSVerification).where(
+            SMSVerification.id == verification_id
+        ))
+        customer_verification = customer_verification_query.scalar_one_or_none()
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail='Database connection failure while retrieving records.'
+        )
+
+    #check if verification was queryed 
+    if not customer_verification:
+        raise HTTPException(
+            status_code=400,
+            detail='No verification record matches this request'
+        )
+
+    new_customer_code = generate_code() #generating new customer code 
+    #updating row attributes
+    customer_verification.code = new_customer_code
+    customer_verification.verification_attempts = 0
+    customer_verification.updated_at = datetime.now(timezone.utc)
+
+    try:
+        await session_db.commit()
+    except Exception:
+        await session_db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail='Failed to persist the new verification code'
+        )
+
+    #recaching the data in redis 
+    try:
+        await cache_db.insert(customer_token, str(verification_id))
+        await cache_db.insert(str(verification_id), customer_data_str)
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail='Failed to renew cache state.'
+        )
+
+    #sending new verification code over to customer
+    message_body = f'Pine verification code: {new_customer_code}'
+    try:
+        send_message(twilio_client,
+                     customer_verification.phonenumber,
+                     pine_number,
+                     message_body
+                     )
+    except RuntimeError:
+        raise HTTPException(
+            status_code=400,
+            detail='Failed to send sms message for new veriifcation code. Please try again.'
+        )
+
+    #returning info to the client 
+    return CustomerSignupResponse(
+        customer_token=customer_token,
+        response='Verification code resent successfully.'
     )
