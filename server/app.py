@@ -4,7 +4,8 @@ from fastapi.requests import Request
 from server.config.configuration import (
     POSTGRES_URI,
     CACHE_PORT,
-    CACHE_URL
+    CACHE_URL,
+    SERVER_SECRET_KEY
 )
 from server.config.database import (
     RelationalDatabase,
@@ -27,10 +28,14 @@ async def get_cache_db(request:Request):
     return request.app.state.cache_database
 
 #getting the twilio client
-async def get_twilio_client(request:Request):
+def get_twilio_client(request:Request):
     api_wrapper:APIWrapper = request.app.state.api_wrapper
 
     return api_wrapper.configure_twilio_api() #returns client
+
+#getting the server's secret key
+def get_server_key(request:Request):
+    return request.app.state.server_key
 
 #app's lifespan function -> configures the servers attributes at startup time
 @asynccontextmanager
@@ -58,6 +63,8 @@ async def lifespan(app:FastAPI):
     #Starting up the servers api wrapper -> wraps apis used across server
     api_wrapper = APIWrapper()
     app.state.api_wrapper = api_wrapper
+
+    app.state.server_key = SERVER_SECRET_KEY
 
     yield #yields the application running 
 
