@@ -24,6 +24,7 @@ from twilio.rest import Client
 from typing import Annotated
 from pydantic_extra_types.phone_numbers import PhoneNumber
 from redis.asyncio import RedisError
+from datetime import datetime, UTC
 from uuid import UUID
 import json
 
@@ -85,4 +86,33 @@ async def customer_verify(customer_info:CustomerSMSVerify, customer_token:str,
             detail=''
         )
 
-    
+    #checking if the customer entered right code 
+    if not customer_verification.check_code(customer_info.code):
+        pass
+
+    #updating the verification attributes
+    customer_verification.verification_state = VerificationState.ACCEPTED
+    customer_verification.verified_at = datetime.now(UTC)
+
+    #customer enters correct code -> create auth and customer row
+    new_customer = Customer(
+        name=customer_data_dict.get('name'),
+        email=customer_data_dict.get('email'),
+        phonenumber=customer_data_dict.get('phonenumber'),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC)
+    )
+
+    #mapping created model -> postgres table
+    try:
+        session_db.add(new_customer)
+        await session_db.flush()
+        await session_db.commit()
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail=''
+        )
+
+    #creating customer's auth table
+    pass
