@@ -53,3 +53,9 @@ class SMSVerification(Base):
         salt = bcrypt.gensalt() #salt for the hash
 
         self.verification_code = bcrypt.hashpw(value_bytes, salt)
+
+    #helper method to check if code matches hash
+    def check_code(self, value:str) -> bool:
+        value_encoded = value.encode('utf-8')
+
+        return bcrypt.checkpw(self.verification_code, value_encoded)
