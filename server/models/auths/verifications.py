@@ -12,6 +12,7 @@ from sqlalchemy.orm import (
     mapped_column
 )
 from pydantic_extra_types.phone_numbers import PhoneNumber
+from server.applications.customers.services.auth.auth_service import AuthState
 import uuid
 from datetime import datetime
 from enum import StrEnum
@@ -36,6 +37,7 @@ class SMSVerification(Base):
     verification_code:Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     verification_attempts:Mapped[int] = mapped_column(Integer, nullable=False)
     verification_state:VerificationState = mapped_column(String(length=10), nullable=False)
+    auth_state:AuthState = mapped_column(String(length=15), nullable=False)
 
     #audit attributes of the verification
     created_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

@@ -20,14 +20,15 @@ from server.applications.customers.schemas.auth.signup import (
 from server.config.database import CacheDatabase
 from server.applications.customers.services.auth.auth_service import (
     generate_code,
-    send_message
+    send_message,
+    AuthState
 )
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic_extra_types.phone_numbers import PhoneNumber
 from typing import Annotated
 from twilio.rest import Client
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from redis.asyncio import RedisError
 from uuid import uuid4
 import json
@@ -76,8 +77,9 @@ async def customer_signup(customer_info:CustomerSignup,
         phonenumber=customer_info.phonenumber,
         verification_attempts=0,
         verification_state=VerificationState.PENDING,
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC)
+        auth_state=AuthState.SIGNUP,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc)
     )
     customer_verification.code = user_code 
 
