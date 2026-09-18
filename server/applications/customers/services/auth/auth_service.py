@@ -7,7 +7,7 @@ from twilio.rest import Client
 """Helper functions for the auth routes"""
 #function to generate user six digit code
 def generate_code(limit:int=6):
-    code = ''.join(random.choices(k=limit), string.digits)
+    code = ''.join(random.choices(string.digits, k=limit))
 
     return code #returns random six digit num
 

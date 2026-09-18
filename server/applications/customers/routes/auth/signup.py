@@ -32,7 +32,7 @@ from redis.asyncio import RedisError
 from uuid import uuid4
 import json
 
-customer_auth_router = APIRouter(prefix='/customer/auth', tags=['Auth routes for the customer'])
+customer_auth_router = APIRouter(prefix='/auth/customer', tags=['Auth routes for the customer'])
 
 """Route for the customer to signup for the application"""
 @customer_auth_router.post('/signup', response_model=CustomerSignupResponse)
