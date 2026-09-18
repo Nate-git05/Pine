@@ -5,7 +5,8 @@ from server.config.configuration import (
     PINENUMBER,
     POSTGRES_URI,
     CACHE_PORT,
-    CACHE_URL
+    CACHE_URL,
+    SERVER_SECRET_KEY
 )
 from server.config.database import (
     RelationalDatabase,
@@ -30,9 +31,14 @@ def get_cache_db(request:Request):
 
 #getting the twilio client
 def get_twilio_client(request:Request):
+def get_twilio_client(request:Request):
     api_wrapper:APIWrapper = request.app.state.api_wrapper
 
     return api_wrapper.configure_twilio_api() #returns client
+
+#getting the server's secret key
+def get_server_key(request:Request):
+    return request.app.state.server_key
 
 #getting the server's number 
 def get_servers_number(request:Request):
@@ -64,6 +70,8 @@ async def lifespan(app:FastAPI):
     #Starting up the servers api wrapper -> wraps apis used across server
     api_wrapper = APIWrapper()
     app.state.api_wrapper = api_wrapper
+
+    app.state.server_key = SERVER_SECRET_KEY
 
     app.state.server_number = PINENUMBER #adding the server's number to the app state
 

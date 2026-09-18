@@ -11,6 +11,11 @@ PINENUMBER = os.getenv('PINENUMBER')
 if not PINENUMBER:
     raise ValueError('Unable to retrieve the server\'s phonenumber from .env file.')
 
+#Server's secret key
+SERVER_SECRET_KEY = os.getenv('SERVER_SECRET_KEY')
+if not SERVER_SECRET_KEY:
+    raise ValueError('Unable to retrieve the server\'s secret key.')
+
 #Relational -> Postgres
 class Base(DeclarativeBase):
     pass
