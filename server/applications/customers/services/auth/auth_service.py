@@ -57,7 +57,7 @@ async def get_current_customer(customer_token:Annotated[str, Depends(oauth2_sche
         token_uuid = UUID(customer_token)
     except Exception:
         raise HTTPException(
-            status_code=405,
+            status_code=404,
             detail='Database error. Invalid token shape.'
         )
 
@@ -77,12 +77,19 @@ async def get_current_customer(customer_token:Annotated[str, Depends(oauth2_sche
     except Exception:
         raise HTTPException(
             status_code=500,
-            detail=''
+            detail='Database error. Session handling went wrong.'
         )
 
     #check if session exists 
-    session_valid = datetime.now(timezone.utc) > customer_session.token_exp_time
-    if (not customer_session) or session_valid:
+    if (not customer_session):
+        raise HTTPException(
+            status_code=404,
+            detail=''
+        )
+
+    #check if session expired 
+    session_valid = datetime.now(timezone.utc) < customer_session.token_exp_time
+    if not session_valid:
         customer_session.expired_at = datetime.now(timezone.utc)
         try:
             await session_db.commit()
@@ -90,13 +97,14 @@ async def get_current_customer(customer_token:Annotated[str, Depends(oauth2_sche
             await session_db.rollback()
             raise HTTPException(
                 status_code=500,
-                detail=''
+                detail='Database error. Session handling went wrong.'
             )
-        
+
         raise HTTPException(
-            status_code=405,
-            detail=''
+            status_code=404,
+            detail='Session expired. Please login again.'
         )
+
     
     customer_session.validated_at = datetime.now(timezone.utc) #validating the customer session token
     try:
@@ -105,7 +113,7 @@ async def get_current_customer(customer_token:Annotated[str, Depends(oauth2_sche
         await session_db.rollback()
         raise HTTPException(
             status_code=500,
-            detail=''
+            detail='Database error. Session handling went wrong.'
         )
 
     #database query for the customer
@@ -117,16 +125,14 @@ async def get_current_customer(customer_token:Annotated[str, Depends(oauth2_sche
     except Exception:
         raise HTTPException(
             status_code=500,
-            detail=''
+            detail='Database error. Session handling went wrong.'
         )
 
     #check if customer was queried
     if not customer:
         raise HTTPException(
             status_code=500,
-            detail=''
+            detail='Unable to locate customer.'
         )
 
-    return customer #returning customer to server route
-    
-
+    return customer #returning customer to server route 
