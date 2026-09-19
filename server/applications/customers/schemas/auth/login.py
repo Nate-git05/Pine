@@ -20,3 +20,8 @@ class CustomerLogin(BaseModel):
             self.email, self.phonenumber
         ]):
             raise ValueError('Both email and phonenumber need to be entered to login.')
+        
+#Schema for the login response to the client
+class CustomerLoginResponse(BaseModel):
+    token:str = None 
+    response:str = None

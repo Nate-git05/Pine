@@ -14,7 +14,8 @@ from server.models.auths.verifications import (
     VerificationState
 )
 from server.applications.customers.schemas.auth.login import (
-    CustomerLogin
+    CustomerLogin,
+    CustomerLoginResponse
 )
 from server.applications.customers.services.auth.auth_service import (
     generate_code,
@@ -32,7 +33,7 @@ from uuid import uuid4
 import json
 
 """Route for the customer to login"""
-@customer_auth_router.post('/login')
+@customer_auth_router.post('/login', response_model=CustomerLoginResponse)
 async def customer_login(customer_info:CustomerLogin,
                          session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
                          cache_db:Annotated[CacheDatabase, Depends(get_cache_db)],
@@ -100,3 +101,7 @@ async def customer_login(customer_info:CustomerLogin,
         )
 
     #returning info from the client
+    return CustomerLoginResponse(
+        token=customer_exp_token,
+        response='Pine verification has been sent to you. Via sms.'
+    )
