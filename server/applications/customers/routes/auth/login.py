@@ -100,6 +100,20 @@ async def customer_login(customer_info:CustomerLogin,
             detail='Database error. Please try logining in again.'
         )
 
+    #sending message over to the customer
+    message_body = f'Pine verification code: {customer_code}'
+    try:
+        send_message(twilio_client, 
+                     customer.phonenumber, 
+                     pine_number, 
+                     message_body
+                )
+    except RuntimeError:
+        raise HTTPException(
+            status_code=400,
+            detail='Unable to send verification code via sms. Try logining in again.'
+        )
+
     #returning info from the client
     return CustomerLoginResponse(
         token=customer_exp_token,
