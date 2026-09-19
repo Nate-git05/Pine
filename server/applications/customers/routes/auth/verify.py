@@ -93,7 +93,7 @@ async def customer_verify(customer_info:CustomerSMSVerify, customer_token:str,
     if not customer_verification:
         raise HTTPException(
             status_code=405,
-            detail='Database error. Please try signing in again.'
+            detail='Database error. Please try signing up again.'
         )
 
     #checking if the customer entered right code 
