@@ -194,3 +194,20 @@ class VectorDatabase:
             raise error
 
     #retrieving points from vector 
+    async def retrieve(self, embeddings:list, limit:int, collection_type:CollectionType):
+        collection_name = self.retrieve_collection_name(collection_type) #getting the collection name
+
+        #querying the collection
+        try:
+            database_query = await self.vector_database.query_points(
+                collection_name=collection_name,
+                query=embeddings,
+                limit=limit,
+                with_payload=True,
+                with_vectors=False
+            )
+        except Exception as error:
+            raise error
+
+        payload_lst = [query.payload for query in database_query.points if query.payload] #list to store the payloads 
+        return payload_lst
