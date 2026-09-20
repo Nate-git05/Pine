@@ -16,9 +16,9 @@ class RelationalDatabase:
     def __init__(self, postgres_uri:str):
         #creating the async session 
         try:
-            async_engine = create_async_engine(url=postgres_uri)
+            self.async_engine = create_async_engine(url=postgres_uri)
             self.async_session = async_sessionmaker(
-                bind=async_engine,
+                bind=self.async_engine,
                 class_=AsyncSession,
                 expire_on_commit=False
             )
@@ -30,12 +30,19 @@ class RelationalDatabase:
         async with self.async_session() as session:
             yield session
 
-#Cache
+    #method to close connection to relational DB
+    async def close_db(self):
+        try:
+            await self.async_engine.dispose() #closing connection to postgres server
+        except Exception as error:
+            raise error
+
+#Cachea
 class CacheDatabase:
     def __init__(self, cache_url:str, cache_port:int, decode_responses=True):
         #initializing connection to cache database
         try:
-            self.redis_db = Redis(
+            self.redis_db =  Redis(
                 host=cache_url,
                 port=cache_port,
                 decode_responses=decode_responses
@@ -69,5 +76,12 @@ class CacheDatabase:
         #deletes the value at key in cache 
         try:
             await self.redis_db.delete(key) 
+        except RedisError as error:
+            raise error
+
+    #method to close cache database
+    async def close_cache(self):
+        try:
+            await self.redis_db.aclose() #closes connection to database
         except RedisError as error:
             raise error
