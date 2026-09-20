@@ -10,7 +10,7 @@ from redis.asyncio import (
     RedisError
 )
 from qdrant_client import AsyncQdrantClient
-
+from openai import Client
 
 """Configuring databases for the server"""
 #Relational 
@@ -90,16 +90,14 @@ class CacheDatabase:
 
 #Vector 
 class VectorDatabase:
-    def __init__(self, url:str, api_key:str, model_name:str):
+    def __init__(self, url:str, qdrant_api_key:str, embedding_model:str, openai_api_key:str):
         #initializing the qdrant database
         try:
             self.vector_database = AsyncQdrantClient(
                 url=url,
-                api_key=api_key
+                api_key=qdrant_api_key
             )
         except Exception as error:
             raise error 
 
-        #configuring the embedding model 
-        try:
-            embedding_model = _ 
+        
