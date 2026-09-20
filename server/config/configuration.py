@@ -37,3 +37,9 @@ TWILIO_API_KEY = os.getenv('TWILIO_API_KEY')
 TWILIO_SECRET = os.getenv('TWILIO_SECRET')
 if (not TWILIO_ACCOUNT_SID) or (not TWILIO_API_KEY) or (not TWILIO_SECRET):
     raise ValueError('Unable to retrieve Twilio api information from .env file.')
+
+#OpenAI API
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL')
+if (not EMBEDDING_MODEL) or (not OPENAI_API_KEY):
+    raise ValueError('Unable to retrieve the OpenAI key nor the embedding model from the .env file.')

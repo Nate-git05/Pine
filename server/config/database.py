@@ -11,6 +11,7 @@ from redis.asyncio import (
 )
 from qdrant_client import AsyncQdrantClient
 
+
 """Configuring databases for the server"""
 #Relational 
 class RelationalDatabase:
@@ -100,4 +101,5 @@ class VectorDatabase:
             raise error 
 
         #configuring the embedding model 
-        
+        try:
+            embedding_model = _ 
