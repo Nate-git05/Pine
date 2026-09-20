@@ -75,6 +75,18 @@ async def lifespan(app:FastAPI):
 
     yield #yields the application running 
 
+    #Closing the aopen connections 
+    try:
+        await relational_database.close_db()
+    except Exception:
+        raise RuntimeError('Unable to close the Postgres connection.')
+
+    #cache database
+    try:
+        await cache_database.close_cache()
+    except RedisError:
+        raise RuntimeError('Unable to close the cache database.')
+
 
 #Initialzing the app 
 app = FastAPI(lifespan=lifespan)
