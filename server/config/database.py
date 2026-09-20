@@ -9,6 +9,7 @@ from redis.asyncio import (
     Redis,
     RedisError
 )
+from qdrant_client import AsyncQdrantClient
 
 """Configuring databases for the server"""
 #Relational 
@@ -37,7 +38,7 @@ class RelationalDatabase:
         except Exception as error:
             raise error
 
-#Cachea
+#Cache
 class CacheDatabase:
     def __init__(self, cache_url:str, cache_port:int, decode_responses=True):
         #initializing connection to cache database
@@ -85,3 +86,18 @@ class CacheDatabase:
             await self.redis_db.aclose() #closes connection to database
         except RedisError as error:
             raise error
+
+#Vector 
+class VectorDatabase:
+    def __init__(self, url:str, api_key:str, model_name:str):
+        #initializing the qdrant database
+        try:
+            self.vector_database = AsyncQdrantClient(
+                url=url,
+                api_key=api_key
+            )
+        except Exception as error:
+            raise error 
+
+        #configuring the embedding model 
+        
