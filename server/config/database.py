@@ -13,9 +13,11 @@ from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import (
     VectorParams,
     Distance,
-    PointStruct
+    PointStruct,
+    PointIdsList
 )
 from openai import AsyncClient
+from uuid import uuid4
 from enum import StrEnum
 
 """Configuring databases for the server"""
@@ -50,7 +52,7 @@ class CacheDatabase:
     def __init__(self, cache_url:str, cache_port:int, decode_responses=True):
         #initializing connection to cache database
         try:
-            self.redis_db =  Redis(
+            self.redis_db = Redis(
                 host=cache_url,
                 port=cache_port,
                 decode_responses=decode_responses
@@ -123,7 +125,9 @@ class VectorDatabase:
         points_lst = [] #empty lst to store embeddings 
 
         #looping through embeddings creating points 
-        for embedding_id, embedding_point in enumerate(embeddings):
+        for embedding_point in embeddings:
+            embedding_id = str(uuid4()) #generating the id for the vector
+
             #initializing vector point
             point = PointStruct(
                 id=embedding_id,
@@ -133,6 +137,17 @@ class VectorDatabase:
             points_lst.append(point) #appending vector point to the lst
 
         return points_lst
+
+    #static method to retrieve the Ids 
+    @staticmethod
+    def retrieve_point_ids(self, database_query):
+        point_id_lst = [] #empty lst to store 
+
+        #querying through the points -> appending to lst
+        for point in database_query:
+            point_id_lst.append(point.id) 
+
+        return point_id_lst #returns the lst of points 
 
     #helper method -> retrieves the collection name for collection type 
     def retrieve_collection_name(self, collection_type:CollectionType):
@@ -183,17 +198,21 @@ class VectorDatabase:
             embeddings=embeddings
         )
 
-        #inserting the vectors into the database
+        #CRUD methods 
+        #create
         try:
             await self.vector_database.upsert(
-                collection_name=self.agent_collection,
+                collection_name=collection_name,
                 points=vector_points,
-                payload=payload
+                payload=payload,
+                wait=True
             )
         except Exception as error:
             raise error
 
-    #retrieving points from vector 
+        return vector_points
+
+    #get 
     async def retrieve(self, embeddings:list, limit:int, collection_type:CollectionType):
         collection_name = self.retrieve_collection_name(collection_type) #getting the collection name
 
@@ -204,10 +223,42 @@ class VectorDatabase:
                 query=embeddings,
                 limit=limit,
                 with_payload=True,
-                with_vectors=False
+                with_vectors=False,
             )
         except Exception as error:
             raise error
 
         payload_lst = [query.payload for query in database_query.points if query.payload] #list to store the payloads 
         return payload_lst
+
+    #delete
+    async def delete_embeddings(self, embeddings:list, collection_type:CollectionType):
+        collection_name = self.retrieve_collection_name(collection_type)
+
+        #retrieving the points -> deleting their IDs
+        try:
+            database_query = await self.retrieve(
+                embeddings, 
+                limit=1, 
+                collection_type=CollectionType.AGENT
+            )
+            if not database_query:
+                raise Exception('Unable to ')
+
+            #getting the ids for the points 
+            points_id_lst = self.retrieve_point_ids(database_query)
+
+            #deleting the points at the IDs
+            await self.vector_database.delete(
+                collection_name=collection_name,
+                points_selector=points_id_lst
+            )
+        except Exception as error:
+            raise error 
+
+    #closing the vector database 
+    async def close_db(self):
+        try:
+            await self.vector_database.close()
+        except Exception as error:
+            raise error
