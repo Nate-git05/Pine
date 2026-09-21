@@ -120,6 +120,12 @@ async def lifespan(app:FastAPI):
     except RedisError:
         raise RuntimeError('Unable to close the cache database.')
 
+    #vector database
+    try:
+        await vector_database.close_db()
+    except Exception:
+        raise RuntimeError('Unable to close the vector database')
+
 
 #Initialzing the app 
 app = FastAPI(lifespan=lifespan)
