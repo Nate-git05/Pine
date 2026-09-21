@@ -23,7 +23,7 @@ class AgentState(StrEnum):
 
 """SQL model for the agent maps python obj -> Postgres"""
 class Agent(Base):
-    __tablename__ = 'agent' #name for the agent's table
+    __tablename__ = 'agents' #name for the agent's table
 
     #defining attributes of the agent 
     id:Mapped[UUID] = mapped_column(Uuid, primary_key=True)
@@ -37,6 +37,10 @@ class Agent(Base):
 
     #relationaship attributes 
     merchant_id:Mapped[Uuid] = mapped_column(ForeignKey('merchants.id'), nullable=False, index=True)
+
+    #storage database attributes 
+    imgicon_storage_key:Mapped[str] = mapped_column(String(length=150), nullable=True)
+    skill_file_storage_key:Mapped[str] = mapped_column(String(length=150), nullable=True)
 
     #audit attributes 
     created_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
