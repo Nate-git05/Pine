@@ -30,6 +30,12 @@ CACHE_PORT = os.getenv('CACHE_PORT')
 if (not CACHE_URL) or (not CACHE_PORT):
     raise ValueError('Unable to retrieve neither the url nor the port for the cache database from .env file.')
 
+#Vector -> Qdrant 
+QDRANT_URL = os.getenv('QDRANT_URL')
+QDRANT_API_KEY = os.getenv('QDRANT_API_KEY')
+if (not QDRANT_URL) or (not QDRANT_API_KEY):
+    raise ValueError('Unable to retrieve the url and the api key for the Qdrant from .env file.')
+
 """Configuring the API's for the server"""
 #Twilio API
 TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
