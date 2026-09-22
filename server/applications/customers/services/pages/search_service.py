@@ -14,6 +14,6 @@ async def retrieve_queryied_agents(payload_lst:list[dict]):
             agent_description=payload.get('agent_desciption')
         )
 
-        returned_agents_lst.append(agent_returned)
+        returned_agents_lst.append(agent_returned) #appending the agent to lst
 
     return returned_agents_lst

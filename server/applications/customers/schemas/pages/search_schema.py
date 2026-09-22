@@ -36,3 +36,4 @@ class AgentsReturned(BaseModel):
 #schema for the list of agents returned  
 class AgentReturnedList(BaseModel):
     returned_agents:list[AgentsReturned] = None 
+    agent_seen_lst:list[str] = None 
