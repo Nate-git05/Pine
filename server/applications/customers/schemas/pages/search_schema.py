@@ -26,3 +26,13 @@ class CustomerSearch(BaseModel):
             raise ValueError('Please enter a term to start searching.')
 
         return self #returning the schema
+
+#schema for the individual agent returned 
+class AgentsReturned(BaseModel):
+    agent_id:str = None 
+    agent_name:str = None 
+    agent_description:str = None 
+
+#schema for the list of agents returned  
+class AgentReturnedList(BaseModel):
+    returned_agents:list[AgentsReturned] = None 
