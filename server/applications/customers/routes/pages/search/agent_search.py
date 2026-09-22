@@ -29,16 +29,16 @@ from server.applications.customers.services.pages.search_service import (
 from sqlalchemy.ext.asyncio import AsyncSession
 from openai import AsyncClient
 from typing import Annotated
+from uuid import UUID
 
 customer_search_router = APIRouter(prefix='/customer/search', tags=['Routes for the search navigation page.'])
 
 """Route for the customer to search for an agent"""
-@customer_search_router.post('/agents')
+@customer_search_router.post('/agents?={limit}')
 async def customer_search_agent(customer_info:CustomerSearch,
                                 vector_db:Annotated[VectorDatabase, Depends(get_vector_database)],
                                 openai_client:Annotated[AsyncClient, Depends(get_openai_client)],
                                 customer:Annotated[Customer, Depends(get_current_customer)],
-                                agent_ids_seen:list,
                                 limit:int=10
                                 ):
     #vector database query ->
@@ -47,7 +47,7 @@ async def customer_search_agent(customer_info:CustomerSearch,
         embedded_query = await vector_db.create_vector_embedding(openai_client, customer_info)
 
         #check if cursor for the query exists -> if exist filter out ids 
-        if agent_ids_seen:
+        if customer_info.agent_ids_seen:
             database_query = await vector_db.retrieve_filter_ids(
                 embeddings=embedded_query,
                 limit=limit,
@@ -62,7 +62,7 @@ async def customer_search_agent(customer_info:CustomerSearch,
             )
 
         #check if queried returned anything
-        if not database_query.points:
+        if (not database_query) or (not database_query.points):
             raise HTTPException(
                 status_code=400,
                 detail=''
@@ -93,4 +93,6 @@ async def customer_search_agent(customer_info:CustomerSearch,
 """Route to get information about specific agent"""
 @customer_search_agent.get('agents/{agent_id}')
 async def get_searched_agent(agent_id:str,
-                             session_db:Annotated[AsyncSession, Depends()])
+                             session_db:Annotated[AsyncSession, Depends()]
+                             ):
+    pass

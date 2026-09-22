@@ -8,6 +8,7 @@ from pydantic import (
 """Schema for the request/response in for search page"""
 class CustomerSearch(BaseModel):
     search_request:str = None 
+    agent_ids_seen:list[str] = None 
 
     #validating the search field
     @field_validator('search_request')
