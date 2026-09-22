@@ -33,7 +33,7 @@ from typing import Annotated
 customer_search_router = APIRouter(prefix='/customer/search', tags=['Routes for the search navigation page.'])
 
 """Route for the customer to search for an agent"""
-@customer_search_router.post('/agent/limit?={limit}')
+@customer_search_router.post('/agents')
 async def customer_search_agent(customer_info:CustomerSearch,
                                 vector_db:Annotated[VectorDatabase, Depends(get_vector_database)],
                                 openai_client:Annotated[AsyncClient, Depends(get_openai_client)],
@@ -48,19 +48,27 @@ async def customer_search_agent(customer_info:CustomerSearch,
 
         #check if cursor for the query exists -> if exist filter out ids 
         if agent_ids_seen:
-            payload_lst = await vector_db.retrieve_filter_ids(
+            database_query = await vector_db.retrieve_filter_ids(
                 embeddings=embedded_query,
                 limit=limit,
                 collection_type=CollectionType.AGENT,
                 excluded_ids=agent_ids_seen
             )
         else:
-            payload_lst:list[dict] = await vector_db.retrieve(
+            database_query = await vector_db.retrieve(
                 embeddings=embedded_query,
                 limit=limit,
                 collection_type=CollectionType.AGENT
             )
 
+        #check if queried returned anything
+        if not database_query.points:
+            raise HTTPException(
+                status_code=400,
+                detail=''
+            )
+
+        payload_lst = [point.payload for point in database_query.points if point.payload]
         #appending list of seen ids 
         agent_ids_seen = update_agent_ids_lst(
             payload_lst=payload_lst,
@@ -79,5 +87,10 @@ async def customer_search_agent(customer_info:CustomerSearch,
     except Exception:
         raise HTTPException(
             status_code=400,
-            detail='API error. Please try to search again.'
+            detail='Database Error. Search failed, please try again.'
         )
+
+"""Route to get information about specific agent"""
+@customer_search_agent.get('agents/{agent_id}')
+async def get_searched_agent(agent_id:str,
+                             session_db:Annotated[AsyncSession, Depends()])
