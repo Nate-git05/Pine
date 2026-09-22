@@ -30,7 +30,6 @@ async def get_relational_db_session(request:Request):
     #looping through database to retriev session
     async for session in relational_database.get_db():
         yield session
-        break #yields only one session
 
 def get_cache_db(request:Request):
     return request.app.state.cache_database
