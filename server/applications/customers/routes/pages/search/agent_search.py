@@ -23,7 +23,8 @@ from server.config.database import (
     CollectionType
 )
 from server.applications.customers.services.pages.search_service import (
-    retrieve_queryied_agents
+    retrieve_queryied_agents,
+    update_agent_ids_lst
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from openai import AsyncClient
@@ -47,14 +48,24 @@ async def customer_search_agent(customer_info:CustomerSearch,
 
         #check if cursor for the query exists -> if exist filter out ids 
         if agent_ids_seen:
-            payload_lst = agent_ids_seen
-            pass
+            payload_lst = await vector_db.retrieve_filter_ids(
+                embeddings=embedded_query,
+                limit=limit,
+                collection_type=CollectionType.AGENT,
+                excluded_ids=agent_ids_seen
+            )
         else:
             payload_lst:list[dict] = await vector_db.retrieve(
                 embeddings=embedded_query,
                 limit=limit,
                 collection_type=CollectionType.AGENT
             )
+
+        #appending list of seen ids 
+        agent_ids_seen = update_agent_ids_lst(
+            payload_lst=payload_lst,
+            ids_lst=agent_ids_seen
+        )
 
         #returning the 
         agent_returned_lst = retrieve_queryied_agents(
