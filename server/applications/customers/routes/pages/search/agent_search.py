@@ -34,7 +34,7 @@ from uuid import UUID
 customer_search_router = APIRouter(prefix='/customer/search', tags=['Routes for the search navigation page.'])
 
 """Route for the customer to search for an agent"""
-@customer_search_router.post('/agents?={limit}')
+@customer_search_router.post('/agents?={limit}', response_model=AgentReturnedList)
 async def customer_search_agent(customer_info:CustomerSearch,
                                 vector_db:Annotated[VectorDatabase, Depends(get_vector_database)],
                                 openai_client:Annotated[AsyncClient, Depends(get_openai_client)],
@@ -62,10 +62,11 @@ async def customer_search_agent(customer_info:CustomerSearch,
             )
 
         #check if queried returned anything
-        if (not database_query) or (not database_query.points):
-            raise HTTPException(
-                status_code=400,
-                detail=''
+        if not database_query.points:
+            return AgentReturnedList(
+                response='No results for the search.',
+                returned_agents=None,
+                agent_seen_lst=customer_info.agent_ids_seen
             )
 
         payload_lst = [point.payload for point in database_query.points if point.payload]
@@ -86,13 +87,13 @@ async def customer_search_agent(customer_info:CustomerSearch,
         )
     except Exception:
         raise HTTPException(
-            status_code=400,
+            status_code=500,
             detail='Database Error. Search failed, please try again.'
         )
 
 """Route to get information about specific agent"""
 @customer_search_agent.get('agents/{agent_id}')
 async def get_searched_agent(agent_id:str,
-                             session_db:Annotated[AsyncSession, Depends()]
+                             session_db:Annotated[AsyncSession, Depends()],
                              ):
     pass
