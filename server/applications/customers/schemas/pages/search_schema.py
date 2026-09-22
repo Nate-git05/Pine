@@ -29,7 +29,7 @@ class CustomerSearch(BaseModel):
         return self #returning the schema
 
 #schema for the individual agent returned 
-class AgentsReturned(BaseModel):
+class AgentReturned(BaseModel):
     agent_id:str = None 
     agent_name:str = None 
     agent_description:str = None 
@@ -37,11 +37,11 @@ class AgentsReturned(BaseModel):
 #schema for the list of agents returned  
 class AgentReturnedList(BaseModel):
     response:str | None = None 
-    returned_agents:list[AgentsReturned] | None = None 
+    returned_agents:list[AgentReturned] | None = None 
     agent_seen_lst:list[str] = None 
 
 #schema for the response for returned agent
-class ReturnedAgent(BaseModel):
+class AgentInfo(BaseModel):
     #agent information
     agent_id:str = None 
     agent_imgicon_key:str = None 
@@ -52,8 +52,9 @@ class ReturnedAgent(BaseModel):
 #schema for returning the merchat parcial info -> merchant hosts agent
 class AgentMerchantInfo(BaseModel):
     merchant_id:str = None 
+    merchant_name:str = None 
     merchant_imgicon_key:str = None
 
 #schema for the response returned from route 
-class SearchedAgentResponse(BaseModel):
+class AgentResponse(BaseModel):
     returned_info:dict[str] = None 

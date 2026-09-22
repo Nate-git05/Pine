@@ -10,14 +10,13 @@ from server.app import (
 )
 from server.applications.customers.schemas.pages.search_schema import (
     CustomerSearch,
-    AgentReturnedList
+    AgentReturnedList,
+    AgentInfo,
+    AgentMerchantInfo,
+    AgentResponse
 )
 from server.models.users.customers import Customer
-from server.models.agents.agent import (
-    Agent,
-    AgentState
-)
-from server.models.agents.hired_agent import HiredAgent
+from server.models.agents.agent import Agent
 from server.config.database import (
     VectorDatabase,
     CollectionType
@@ -27,6 +26,7 @@ from server.applications.customers.services.pages.search_service import (
     update_agent_ids_lst
 )
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from openai import AsyncClient
 from typing import Annotated
 from uuid import UUID
@@ -92,8 +92,55 @@ async def customer_search_agent(customer_info:CustomerSearch,
         )
 
 """Route to get information about specific agent"""
-@customer_search_agent.get('agents/{agent_id}')
-async def get_searched_agent(agent_id:str,
+@customer_search_agent.get('agents/{agent_id_str}')
+async def get_searched_agent(agent_id_str:str,
                              session_db:Annotated[AsyncSession, Depends()],
                              ):
-    pass
+    #casting agent id to UUID
+    try:
+        agent_id = UUID(agent_id_str)
+    except Exception:
+        raise HTTPException(
+            status_code='Invalid id form. Please try selecting agent again.'
+        ) 
+
+    #database query for the agent 
+    try:
+        agent_query = await session_db.execute(select(Agent).where(
+            Agent.id == agent_id
+        ))
+        agent = agent_query.scalar_one_or_none() #returns first agent found
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail='Database error. Unable to locate agent. Please try again.'
+        )
+
+    #check if agent was successfuly queried 
+    if not agent:
+        raise HTTPException(
+            status_code=400,
+            detail='Unable to retrieve agent\'s information.'
+        )
+
+    #agent info object 
+    agent_info = AgentInfo(
+        agent_id=str(agent.id),
+        agent_imgicon_key=agent.imgicon_storage_key,
+        agent_name=agent.name,
+        agent_description=agent.description,
+        agent_skills=agent.agent_skills
+    )
+
+    #merchant info object
+    agent_mechant_info = AgentMerchantInfo(
+
+    )
+
+    #returning info to the client 
+    return AgentResponse(
+        returned_info={
+            'agent':agent_info,
+            'merchant':agent_mechant_info
+        }
+    )
