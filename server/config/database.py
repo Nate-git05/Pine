@@ -229,11 +229,11 @@ class VectorDatabase:
                 with_payload=True,
                 with_vectors=False,
             )
+
+            return database_query #returning query
         except Exception as error:
             raise error
 
-        payload_lst = [query.payload for query in database_query.points if query.payload] #list to store the payloads 
-        return payload_lst
 
     #GET #2 -> filters by ids
     async def retrieve_filter_ids(self, 
@@ -260,9 +260,7 @@ class VectorDatabase:
                 limit=limit
             )
 
-            #creating -> returning lst that stores the vector search payloads
-            payload_lst = [point.payload for point in database_query.points if point.payload] 
-            return payload_lst
+            return database_query #returning query
         except Exception as error:
             raise error
 
