@@ -16,6 +16,7 @@ from server.applications.customers.schemas.pages.search_schema import (
     AgentResponse
 )
 from server.models.users.customers import Customer
+from server.models.users.merchants import Merchant
 from server.models.agents.agent import Agent
 from server.config.database import (
     VectorDatabase,
@@ -94,7 +95,7 @@ async def customer_search_agent(customer_info:CustomerSearch,
 """Route to get information about specific agent"""
 @customer_search_agent.get('agents/{agent_id_str}')
 async def get_searched_agent(agent_id_str:str,
-                             session_db:Annotated[AsyncSession, Depends()],
+                             session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
                              ):
     #casting agent id to UUID
     try:
@@ -104,12 +105,19 @@ async def get_searched_agent(agent_id_str:str,
             status_code='Invalid id form. Please try selecting agent again.'
         ) 
 
-    #database query for the agent 
+    #relational database query
     try:
+        #agent query
         agent_query = await session_db.execute(select(Agent).where(
             Agent.id == agent_id
         ))
         agent = agent_query.scalar_one_or_none() #returns first agent found
+
+        #merchant query 
+        merchant_query = await session_db.execute(select(Merchant).where(
+            Merchant.id == agent.merchant_id
+        ))
+        merchant = merchant_query.scalar_one_or_none()
     except Exception:
         raise HTTPException(
             status_code=500,
@@ -117,10 +125,10 @@ async def get_searched_agent(agent_id_str:str,
         )
 
     #check if agent was successfuly queried 
-    if not agent:
+    if (not agent) or (not merchant):
         raise HTTPException(
             status_code=400,
-            detail='Unable to retrieve agent\'s information.'
+            detail='Database error. Please try selecting the agent again.'
         )
 
     #agent info object 
@@ -134,6 +142,9 @@ async def get_searched_agent(agent_id_str:str,
 
     #merchant info object
     agent_mechant_info = AgentMerchantInfo(
+        merchant_id=str(merchant.id),
+        merchant_name=merchant.username,
+        merchant_imgicon_key=merchant.merchant_imgicon_key
     )
 
     #returning info to the client 

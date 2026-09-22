@@ -5,7 +5,8 @@ from sqlalchemy import (
     String,
     ARRAY,
     DateTime,
-    ForeignKey
+    ForeignKey,
+    Double
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -30,10 +31,12 @@ class Agent(Base):
 
     #personal attributes 
     name:Mapped[str] = mapped_column(String(length=50), nullable=True)
-    description:Mapped[str] = mapped_column(String(length=150), nullable=False)
+    description:Mapped[str] = mapped_column(String(length=100), nullable=False)
     agent_skills:Mapped[list[str]] = mapped_column(MutableList.as_mutable(ARRAY(String)), nullable=False)
 
-    agent_state:AgentState = mapped_column(String(length=20), nullable=False, index=True) #state for agent set by merchant
+    #agent tied info 
+    agent_state:AgentState = mapped_column(String(length=20), nullable=False, index=True) 
+    agent_rating:float = mapped_column(Double, nullable=False)
 
     #relationaship attributes 
     merchant_id:Mapped[Uuid] = mapped_column(ForeignKey('merchants.id'), nullable=False, index=True)
