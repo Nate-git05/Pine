@@ -134,7 +134,6 @@ async def get_searched_agent(agent_id_str:str,
 
     #merchant info object
     agent_mechant_info = AgentMerchantInfo(
-
     )
 
     #returning info to the client 
