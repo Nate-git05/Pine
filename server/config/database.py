@@ -14,7 +14,9 @@ from qdrant_client.models import (
     VectorParams,
     Distance,
     PointStruct,
-    PointIdsList
+    PointIdsList,
+    Filter,
+    HasIdCondition
 )
 from openai import AsyncClient
 from uuid import uuid4
@@ -147,7 +149,9 @@ class VectorDatabase:
         for point in database_query:
             point_id_lst.append(point.id) 
 
-        return point_id_lst #returns the lst of points 
+        return PointIdsList(
+            points=point_id_lst
+        ) #returns the lst of points 
 
     #helper method -> retrieves the collection name for collection type 
     def retrieve_collection_name(self, collection_type:CollectionType):
@@ -199,7 +203,7 @@ class VectorDatabase:
         )
 
         #CRUD methods 
-        #create
+        #CREATE
         try:
             await self.vector_database.upsert(
                 collection_name=collection_name,
@@ -212,7 +216,7 @@ class VectorDatabase:
 
         return vector_points
 
-    #get 
+    #GET
     async def retrieve(self, embeddings:list, limit:int, collection_type:CollectionType):
         collection_name = self.retrieve_collection_name(collection_type) #getting the collection name
 
@@ -231,7 +235,38 @@ class VectorDatabase:
         payload_lst = [query.payload for query in database_query.points if query.payload] #list to store the payloads 
         return payload_lst
 
-    #delete
+    #GET #2 -> filters by ids
+    async def retrieve_filter_ids(self, 
+                                  embeddings:list, 
+                                  limit:int, 
+                                  collection_type:CollectionType,
+                                  excluded_ids:list[str]):
+        collection_name = self.retrieve_collection_name(collection_type) #getting name of collection
+
+        #querying with filter of ids 
+        try:
+            database_query = await self.vector_database.query_points(
+                collection_name=collection_name,
+                query=embeddings,
+                query_filter=Filter(
+                    must_not=[
+                        HasIdCondition(
+                            has_id=excluded_ids
+                        )
+                    ]
+                ),
+                with_payload=True,
+                with_vectors=False,
+                limit=limit
+            )
+
+            #creating -> returning lst that stores the vector search payloads
+            payload_lst = [point.payload for point in database_query.points if point.payload] 
+            return payload_lst
+        except Exception as error:
+            raise error
+
+    #DELETE
     async def delete_embeddings(self, embeddings:list, collection_type:CollectionType):
         collection_name = self.retrieve_collection_name(collection_type)
 
