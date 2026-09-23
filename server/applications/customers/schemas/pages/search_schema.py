@@ -32,6 +32,7 @@ class CustomerSearch(BaseModel):
 #schema for the individual agent returned 
 class AgentReturned(BaseModel):
     agent_id:str = None 
+    agent_price:float = None 
     agent_rating:float = None 
     agent_name:str = None 
     agent_description:str = None 
@@ -47,6 +48,7 @@ class AgentInfo(BaseModel):
     #agent information
     agent_id:str = None 
     agent_imgicon_key:str = None 
+    agent_price:float = None 
     agent_rating:float = None 
     agent_name:str = None 
     agent_description:str = None 
