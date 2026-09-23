@@ -32,6 +32,7 @@ class HiredAgent(Base):
     #agent attributes for state and permissions
     agent_restrictions:Mapped[list[str]] = mapped_column(MutableList.as_mutable(ARRAY(String)), nullable=True)
     agent_state:AgentState = mapped_column(String(length=20), nullable=True)
+    agent_imgicon_key:Mapped[str] = mapped_column(String(length=150), nullable=False)
 
     #audit attributes 
     hired_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

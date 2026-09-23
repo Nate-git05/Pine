@@ -65,3 +65,8 @@ class AgentResponse(BaseModel):
 #Schema for the client sending state for agent hiring 
 class AgentContract(BaseModel):
     agent_restrictions:list[str] | None = None 
+
+#Schema for the agent hired/fired response
+class AgentContractResponse(BaseModel):
+    hired_agent_id:str = None 
+    response:str = None 
