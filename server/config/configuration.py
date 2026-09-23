@@ -30,6 +30,12 @@ CACHE_PORT = os.getenv('CACHE_PORT')
 if (not CACHE_URL) or (not CACHE_PORT):
     raise ValueError('Unable to retrieve neither the url nor the port for the cache database from .env file.')
 
+#Vector -> Qdrant 
+QDRANT_URL = os.getenv('QDRANT_URL')
+QDRANT_API_KEY = os.getenv('QDRANT_API_KEY')
+if (not QDRANT_URL) or (not QDRANT_API_KEY):
+    raise ValueError('Unable to retrieve the url and the api key for the Qdrant from .env file.')
+
 """Configuring the API's for the server"""
 #Twilio API
 TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
@@ -37,3 +43,9 @@ TWILIO_API_KEY = os.getenv('TWILIO_API_KEY')
 TWILIO_SECRET = os.getenv('TWILIO_SECRET')
 if (not TWILIO_ACCOUNT_SID) or (not TWILIO_API_KEY) or (not TWILIO_SECRET):
     raise ValueError('Unable to retrieve Twilio api information from .env file.')
+
+#OpenAI API
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL')
+if (not EMBEDDING_MODEL) or (not OPENAI_API_KEY):
+    raise ValueError('Unable to retrieve the OpenAI key nor the embedding model from the .env file.')

@@ -6,11 +6,17 @@ from server.config.configuration import (
     POSTGRES_URI,
     CACHE_PORT,
     CACHE_URL,
-    SERVER_SECRET_KEY
+    SERVER_SECRET_KEY,
+    QDRANT_URL,
+    QDRANT_API_KEY,
+    OPENAI_API_KEY,
+    EMBEDDING_MODEL
 )
 from server.config.database import (
     RelationalDatabase,
-    CacheDatabase
+    CacheDatabase,
+    VectorDatabase,
+    CollectionType
 )
 from server.config.apis import APIWrapper
 from contextlib import asynccontextmanager
@@ -24,15 +30,25 @@ async def get_relational_db_session(request:Request):
     #looping through database to retriev session
     async for session in relational_database.get_db():
         yield session
-        break #yields only one session
 
 def get_cache_db(request:Request):
     return request.app.state.cache_database
 
+def get_vector_database(request:Request):
+    return request.app.state.vector_database
+
+#getting the server's api clients 
 def get_twilio_client(request:Request):
     api_wrapper:APIWrapper = request.app.state.api_wrapper
 
     return api_wrapper.configure_twilio_api() #returns client
+
+def get_openai_client(request:Request):
+    api_wrapper:APIWrapper = request.app.state.api_wrapper
+
+    return api_wrapper.configure_openai_api(
+        api_key=OPENAI_API_KEY
+    )
 
 #getting the server's secret key
 def get_server_key(request:Request):
@@ -65,6 +81,22 @@ async def lifespan(app:FastAPI):
     except RedisError:
         raise RuntimeError('Unable to initialize the redis connection to the cache database')
 
+    #Configuring the app's state for the vector database
+    try:
+        vector_database = VectorDatabase(
+            qdrant_url=QDRANT_URL,
+            qdrant_api_key=QDRANT_API_KEY,
+            embedding_model=EMBEDDING_MODEL,
+        )
+        app.state.vector_database = vector_database #apps state set to vector database
+
+        #configuring the agent collection
+        await vector_database.create_collection(
+            collection_type=CollectionType.AGENT
+        )
+    except Exception:
+        raise RuntimeError('Unable to configure the Qdrant connection for the vector database.')
+    
     #Starting up the servers api wrapper -> wraps apis used across server
     api_wrapper = APIWrapper()
     app.state.api_wrapper = api_wrapper
@@ -86,6 +118,12 @@ async def lifespan(app:FastAPI):
         await cache_database.close_cache()
     except RedisError:
         raise RuntimeError('Unable to close the cache database.')
+
+    #vector database
+    try:
+        await vector_database.close_db()
+    except Exception:
+        raise RuntimeError('Unable to close the vector database')
 
 
 #Initialzing the app 
