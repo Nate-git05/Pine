@@ -39,6 +39,10 @@ class Notification(Base):
     notification_type:NotificationState = mapped_column(String(length=15), nullable=False)
     notification_state:NotificationState = mapped_column(String(length=15), nullable=False)
 
+    #relationship attributes 
+    merchant_id:Mapped[UUID] = mapped_column(ForeignKey('merchants.id'), nullable=True)
+    customer_id:Mapped[UUID] = mapped_column(ForeignKey('customers.id'), nullable=True)
+
     #audit attributes 
     created_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     read_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
