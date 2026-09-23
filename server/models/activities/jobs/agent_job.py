@@ -23,7 +23,7 @@ class AgentJobState(StrEnum):
 
 """SQL model for the agent job maps -> Postgres table"""
 class AgentJob(Base):
-    __tablename__ = 'agent_job' #name of the table 
+    __tablename__ = 'agent_jobs' #name of the table 
 
     #defining attributes of the model
     id:Mapped[UUID] = mapped_column(Uuid, primary_key=True) #unique identifier for the job 
