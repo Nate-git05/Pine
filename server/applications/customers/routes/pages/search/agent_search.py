@@ -78,12 +78,12 @@ async def customer_search_agent(customer_info:CustomerSearch,
         )
 
         #returning the 
-        agent_returned_lst = retrieve_queryied_agents(
+        agents_returned_lst = retrieve_queryied_agents(
             payload_lst=payload_lst
         )
 
         return AgentReturnedList(
-            returned_agents=agent_returned_lst,
+            returned_agents=agents_returned_lst,
             agent_seen_lst=agent_ids_seen
         )
     except Exception:
@@ -136,6 +136,7 @@ async def get_searched_agent(agent_id_str:str,
         agent_id=str(agent.id),
         agent_imgicon_key=agent.imgicon_storage_key,
         agent_name=agent.name,
+        agent_price=(agent.agent_price_per_job / 100), #agent price stored as int -> returned as decimal
         agent_description=agent.description,
         agent_skills=agent.agent_skills
     )
