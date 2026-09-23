@@ -23,6 +23,7 @@ class HiredAgent(Base):
     #defining attributes in the table 
     id:Mapped[UUID] = mapped_column(Uuid, primary_key=True)
     name:Mapped[str] = mapped_column(String(length=50), nullable=False)
+    description:Mapped[str] = mapped_column(String(length=100), nullable=False)
 
     #relationship attributes
     agent_id:Mapped[UUID] = mapped_column(ForeignKey('agents.id'), nullable=False)

@@ -21,6 +21,7 @@ from uuid import UUID
 class AgentState(StrEnum):
     ACTIVE='active'
     IDLE='idle'
+    FIRED='fired'
 
 """SQL model for the agent maps python obj -> Postgres"""
 class Agent(Base):

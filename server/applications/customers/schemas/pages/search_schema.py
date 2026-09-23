@@ -4,6 +4,7 @@ from pydantic import (
     field_validator,
     model_validator
 )
+from enum import StrEnum  
 
 """Schema for the request/response in for search page"""
 class CustomerSearch(BaseModel):
@@ -60,3 +61,7 @@ class AgentMerchantInfo(BaseModel):
 #schema for the response returned from route 
 class AgentResponse(BaseModel):
     returned_info:dict[str] = None 
+
+#Schema for the client sending state for agent hiring 
+class AgentContract(BaseModel):
+    agent_restrictions:list[str] | None = None 
