@@ -5,7 +5,8 @@ from sqlalchemy import (
     ARRAY,
     String,
     DateTime,
-    ForeignKey
+    ForeignKey,
+    Integer
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -18,12 +19,13 @@ from datetime import datetime
 
 """Hired agent table -> maps to Postgres"""
 class HiredAgent(Base):
-    __tablename__ = 'hired_agent'
+    __tablename__ = 'hired_agents'
 
     #defining attributes in the table 
     id:Mapped[UUID] = mapped_column(Uuid, primary_key=True)
     name:Mapped[str] = mapped_column(String(length=50), nullable=False)
     description:Mapped[str] = mapped_column(String(length=100), nullable=False)
+    price_per_job:Mapped[str] = mapped_column(Integer, nullable=False)
 
     #relationship attributes
     agent_id:Mapped[UUID] = mapped_column(ForeignKey('agents.id'), nullable=False)
