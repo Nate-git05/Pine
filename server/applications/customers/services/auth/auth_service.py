@@ -238,10 +238,14 @@ async def get_customer_context(request:Request) -> Customer:
             detail='Unable to locate customer. Please try signing back in.'
         )
 
-    return customer
+    return {
+        'customer':customer,
+        'database_session':session_db
+    }
 
 #dependency function to retrive the validated customer
-async def get_customer(customer:Annotated[Customer, Depends(get_customer_context)]):
+async def get_customer(context_info:Annotated[dict, Depends(get_customer_context)]):
     return {
-        'customer':customer
+        'customer':context_info.get('customer'),
+        'database_session':context_info.get('database_session')
     }
