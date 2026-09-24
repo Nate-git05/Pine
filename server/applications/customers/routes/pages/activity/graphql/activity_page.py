@@ -19,12 +19,13 @@ from server.applications.customers.services.auth.auth_service import get_custome
 from server.applications.customers.schemas.pages.activities_schema import (
     HTTPException,
     JobRequestResponse,
-    JobReturnedResponse
+    JobReturnedResponse,
+    PaymentsReturnedResponse
 )
 from server.applications.customers.services.pages.activity_service import (
     job_reqest_lst_returned,
-    active_jobs_returned,
-    get_completed_jobs_lst
+    jobs_returned_lst,
+    get_customer_payments_lst
 )
 from sqlalchemy import select, and_, desc, asc
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -111,8 +112,9 @@ class ActivityPageQuery:
             )
 
         #getting the list of returned active jobs
-        returned_active_jobs = active_jobs_returned(
-            active_jobs_lst=customer_active_jobs
+        returned_active_jobs = jobs_returned_lst(
+            jobs_lst=customer_active_jobs,
+            job_state=AgentJobState.ACTIVE
         )
 
         #returning response to the client
@@ -132,7 +134,7 @@ class ActivityPageQuery:
         except Exception:
             return HTTPException(
                 status_code=400,
-                detail=''
+                detail='Unable to retrieve customer context. Please try selecting the completed jobs again.'
             )
 
         #database query -> completed jobs 
@@ -145,7 +147,7 @@ class ActivityPageQuery:
         except Exception:
             return HTTPException(
                 status_code=500,
-                detail=''
+                detail='Database error. Please try selectign completed jobs again.'
             )
 
         #check if the customer has any completed jobs 
@@ -156,8 +158,9 @@ class ActivityPageQuery:
             )
 
         #getting lst of the returned completed jobs 
-        returned_complete_jobs = get_completed_jobs_lst(
-            completed_jobs=customer_completed_jobs
+        returned_complete_jobs = jobs_returned_lst(
+            jobs_lst=customer_completed_jobs,
+            job_state=AgentJobState.DONE
         )
 
         #return response to the client
@@ -177,7 +180,7 @@ class ActivityPageQuery:
         except Exception:
             return HTTPException(
                 status_code=400,
-                detail=''
+                detail='Unable to locate customer\'s context. Please try selecting again.'
             )
 
         #database query for the customer transactions
@@ -189,12 +192,29 @@ class ActivityPageQuery:
         except Exception:
             return HTTPException(
                 status_code=500,
-                detail=''
+                detail='database error. Please try selecting again.'
             )
 
         #check if the customer has any payments made 
         if not payments:
-            return 
+            return PaymentsReturnedResponse(
+                status_code=200,
+                response='There haven\'t been any payments made.',
+                payments_returned=None
+            )
+
+        #getting the lst of payments returned to server
+        payments_returned_lst = get_customer_payments_lst(
+            customer_payments=payments
+        )
+
+        #returning response to client
+        return PaymentsReturnedResponse(
+            status_code=200,
+            response=None,
+            payments_returned=payments_returned_lst
+        )
+
 
 #Configuring the GraphQL router 
 activity_page_schema = Schema(query=ActivityPageQuery) #query schema 

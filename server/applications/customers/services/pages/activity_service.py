@@ -29,11 +29,11 @@ def job_reqest_lst_returned(job_request_lst:list[AgentJobRequest]) -> list:
     return job_requests_returned #returning the request lst
 
 #function to return the active jobs as a list 
-def active_jobs_returned(active_jobs_lst:list[AgentJob], job_state:AgentJobState):
+def jobs_returned_lst(jobs_lst:list[AgentJob], job_state:AgentJobState):
     returned_jobs = []
 
     #looping through the lst of active jobs 
-    for active_job in active_jobs_lst:
+    for active_job in jobs_lst:
         job_returned = JobReturned(
             agent_job_id=str(active_job.id),
             agent_job_name=active_job.job_name,
