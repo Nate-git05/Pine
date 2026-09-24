@@ -245,5 +245,3 @@ async def get_customer(customer:Annotated[Customer, Depends(get_customer_context
     return {
         'customer':customer
     }
-
-    
