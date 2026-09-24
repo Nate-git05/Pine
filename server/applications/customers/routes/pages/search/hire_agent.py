@@ -12,12 +12,17 @@ from server.models.agents.agent import (
     AgentState
 )
 from server.models.agents.hired_agent import HiredAgent
+from server.models.notifications.notification_message import (
+    Notification,
+    NotificationType,
+    NotificationState
+)
 from server.applications.customers.schemas.pages.search_schema import (
     AgentContract,
     AgentContractResponse
 )
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, update
+from sqlalchemy import select, and_
 from typing import Annotated
 from datetime import datetime, timezone
 from uuid import UUID
@@ -60,6 +65,7 @@ async def customer_hire_agent(agent_id_str:str,
     new_agent_hire = HiredAgent(
         name=agent.name,
         description=agent.description,
+        price_per_job=agent.agent_price_per_job,
         agent_id=agent.id,
         customer_id=customer.id,
         agent_restrictions=agent_contract.agent_restrictions,
@@ -79,6 +85,27 @@ async def customer_hire_agent(agent_id_str:str,
             status_code=500,
             detail='Database error. Please try hiring the agent again.'
         )
+
+    #creating notification for the merchant 
+    new_merchant_notification = Notification(
+        notification_header=f'New Agent Hire!',
+        notification_message=f'Congratulations {customer.name} just hired your agent {agent.name}.',
+        notification_type=NotificationType.AGENT_HIRED,
+        notification_state=NotificationState.UNREAD,
+        merchant_id=agent.merchant_id,
+        created_at=datetime.now(timezone.utc)
+    )
+
+    #staging and commiting new notification
+    try:
+        session_db.add(new_merchant_notification)
+        await session_db.commit()
+    except Exception:
+        await session_db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail='Database error. Having trouble hiring the agent. Please try again.'
+        ) 
 
     #returning response to client 
     return AgentContractResponse(

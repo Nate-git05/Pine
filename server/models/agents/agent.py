@@ -6,6 +6,7 @@ from sqlalchemy import (
     ARRAY,
     DateTime,
     ForeignKey,
+    Integer,
     Double
 )
 from sqlalchemy.orm import (
@@ -38,6 +39,7 @@ class Agent(Base):
     #agent tied info 
     agent_state:AgentState = mapped_column(String(length=20), nullable=False, index=True) 
     agent_rating:float = mapped_column(Double, nullable=False)
+    agent_price_per_job:Mapped[int] = mapped_column(Integer, nullable=False)
 
     #relationaship attributes 
     merchant_id:Mapped[Uuid] = mapped_column(ForeignKey('merchants.id'), nullable=False, index=True)
