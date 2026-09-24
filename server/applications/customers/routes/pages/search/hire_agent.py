@@ -65,6 +65,7 @@ async def customer_hire_agent(agent_id_str:str,
     new_agent_hire = HiredAgent(
         name=agent.name,
         description=agent.description,
+        price_per_job=agent.agent_price_per_job,
         agent_id=agent.id,
         customer_id=customer.id,
         agent_restrictions=agent_contract.agent_restrictions,

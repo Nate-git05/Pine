@@ -12,6 +12,7 @@ async def retrieve_queryied_agents(payload_lst:list[dict]):
         agent_returned = AgentReturned(
             agent_id=payload.get('agent_id'),
             agent_rating=payload.get('agent_rating'),
+            agent_price=(payload.get('agent_price') / 100),
             agent_name=payload.get('agent_name'),
             agent_description=payload.get('agent_desciption')
         )
