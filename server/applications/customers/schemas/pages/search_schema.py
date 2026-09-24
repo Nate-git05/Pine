@@ -33,7 +33,6 @@ class CustomerSearch(BaseModel):
 class AgentReturned(BaseModel):
     agent_id:str = None 
     agent_price:float = None 
-    agent_rating:float = None 
     agent_name:str = None 
     agent_description:str = None 
 

@@ -24,7 +24,8 @@ from server.config.database import (
 )
 from server.applications.customers.services.pages.search_service import (
     retrieve_queryied_agents,
-    update_agent_ids_lst
+    update_agent_ids_lst,
+    get_agents_rating
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -131,11 +132,21 @@ async def get_searched_agent(agent_id_str:str,
             detail='Database error. Please try selecting the agent again.'
         )
 
+    #getting the agent's rating 
+    try:
+        agent_rating = await get_agents_rating(session_db)
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail='Database error. Please try selecting the agent again.'
+        )
+
     #agent info object 
     agent_info = AgentInfo(
         agent_id=str(agent.id),
         agent_imgicon_key=agent.imgicon_storage_key,
         agent_name=agent.name,
+        agent_rating=agent_rating, 
         agent_price=(agent.agent_price_per_job / 100), #agent price stored as int -> returned as decimal
         agent_description=agent.description,
         agent_skills=agent.agent_skills

@@ -114,7 +114,7 @@ async def customer_hire_agent(agent_id_str:str,
     )
 
 """Route for the customer to fire the agent."""
-@customer_hire_agent.patch('/agent/fire/{agent_hire_id}')
+@customer_search_router.patch('/agent/fire/{agent_hire_id}')
 async def customer_fire_agent(agent_hire_id:str,
                               session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
                               customer:Annotated[Customer, Depends(get_current_customer)]):
