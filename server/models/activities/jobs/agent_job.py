@@ -19,7 +19,6 @@ from uuid import UUID
 class AgentJobState(StrEnum):
     ACTIVE='active'
     DONE='done'
-    HELP_REQUEST='help_request'
 
 """SQL model for the agent job maps -> Postgres table"""
 class AgentJob(Base):
