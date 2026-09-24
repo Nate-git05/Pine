@@ -47,10 +47,27 @@ class JobReturned:
     agent_job_id:str = None 
     agent_job_name:str = None 
     agent_job_description:str = None 
-    created_at:str = None
+    created_at:str | None = None
+    completed_at:str | None = None
 
 @strawberry.type
 class JobReturnedResponse:
     status_code:int = None
     response:str | None = None 
     jobs_returned:list[JobReturned] | None = None 
+
+"""Schemas for the customers payments"""
+#individual payment in the lst
+@strawberry.type
+class PaymentReturned:
+    payment_id:str = None
+    job_name:str = None
+    payment_amount:float = None 
+    paid_at:str = None
+
+#response from the graphql field
+@strawberry.type
+class PaymentsReturnedResponse:
+    status_code:int = None 
+    response:str | None = None
+    payments_returned:list[PaymentReturned] | None = None 
