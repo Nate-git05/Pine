@@ -32,6 +32,7 @@ class AgentJob(Base):
     #state and price attributes for the job
     job_state:AgentJobState = mapped_column(String(length=10), nullable=False)
     job_price:Mapped[int] = mapped_column(Integer, nullable=False)
+    job_rating:Mapped[int] = mapped_column(Integer, nullable=False) 
 
     #relationship params for the job
     hired_agent_id:Mapped[UUID] = mapped_column(ForeignKey('hired_agents.id'), nullable=False)

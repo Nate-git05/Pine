@@ -6,7 +6,8 @@ from sqlalchemy import (
     String,
     DateTime,
     ForeignKey,
-    Integer
+    Integer,
+    Double
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -26,6 +27,7 @@ class HiredAgent(Base):
     name:Mapped[str] = mapped_column(String(length=50), nullable=False)
     description:Mapped[str] = mapped_column(String(length=100), nullable=False)
     price_per_job:Mapped[str] = mapped_column(Integer, nullable=False)
+    agent_rating:Mapped[float] = mapped_column(Double, nullable=False)
 
     #relationship attributes
     agent_id:Mapped[UUID] = mapped_column(ForeignKey('agents.id'), nullable=False)
