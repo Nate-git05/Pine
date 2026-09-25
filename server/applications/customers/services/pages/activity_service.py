@@ -4,7 +4,8 @@ from server.applications.customers.schemas.pages.activities_schema import (
     JobReturned,
     PaymentReturned
 )
-from server.models.users.customers import Customer
+from server.models.users.merchants import Merchant
+from server.models.auths.api_auth import MerchantAPI
 from server.models.activities.jobs.job_request import AgentJobRequest
 from server.models.activities.jobs.agent_job import (
     AgentJob,
@@ -99,6 +100,50 @@ async def get_agent_url(session_db:AsyncSession, request:AgentJobRequest):
     return agent.agents_webhook_url #returning the agents url for webhook
 
 #helper function to get the merchants signature -> and sign it 
-async def get_merchant_signature(session_db:AsyncSession, request:AgentJobRequest):
-    
-    pass
+async def get_merchant_signature(session_db:AsyncSession, request:AgentJobRequest, data:str):
+    try:
+        #database query for the hired agent 
+        hired_agent_query = await session_db.execute(select(HiredAgent).where(
+            HiredAgent.id == request.hired_agent_id
+        ))
+        hired_agent = hired_agent_query.scalar_one_or_none()
+
+        #check for hired agent query 
+        if not hired_agent:
+            raise Exception('Unable to locate the hired agent from the query.')
+
+        #database query for the agent 
+        agent_query = await session_db.execute(select(Agent).where(
+            Agent.id == hired_agent.agent_id
+        ))
+        agent = agent_query.scalar_one_or_none()
+
+        #check if agent was queried 
+        if not agent:
+            raise Exception('Unable to locate the agent from the query.')
+
+        #query for the merchant 
+        merchant_query = await session_db.execute(select(Merchant).where(
+            Merchant.id == agent.merchant_id
+        ))
+        merchant = merchant_query.scalar_one_or_none()
+
+        #check if merchant was successfully queried 
+        if not merchant:
+            raise Exception('Unable to locate the merchant from the query.')
+
+        #getting the merchants api
+        merchant_api_query = await session_db.execute(select(MerchantAPI).where(
+            MerchantAPI.merchant_id == merchant.id
+        ))
+        merchant_api = merchant_api_query.scalar_one_or_none()
+    except Exception as error:
+        raise error 
+
+    #check if merchant api 
+    if not merchant_api:
+        raise Exception('Unable to locate the merchant api from the query.')
+
+    return merchant_api.get_merchant_signature(
+        data=data
+    )

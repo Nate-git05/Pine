@@ -3,8 +3,7 @@ from pydantic import (
     BaseModel,
     field_validator,
     model_validator
-)
-from enum import StrEnum  
+) 
 
 """Schema for the request/response in for search page"""
 class CustomerSearch(BaseModel):

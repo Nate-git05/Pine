@@ -66,7 +66,7 @@ async def get_agents_rating(agent:Agent, session_db:AsyncSession) -> float:
             )))
             agent_jobs = agent_jobs_query.scalars().all() #getting all the jobs from agent by id 
         except Exception as error:
-            raise error
+            raise error 
 
         #check if the agent has completed a job 
         if not agent_jobs:
