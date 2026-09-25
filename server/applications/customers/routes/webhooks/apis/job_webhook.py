@@ -2,7 +2,10 @@
 from fastapi.routing import APIRouter
 from fastapi.exceptions import HTTPException
 from fastapi import Depends
-from server.app import get_relational_db_session
+from server.app import (
+    get_relational_db_session,
+    get_notifications_events
+)
 from server.models.users.merchants import Merchant
 from server.models.auths.api_auth import MerchantAPI
 from server.models.activities.jobs.agent_job import (
@@ -25,6 +28,7 @@ from server.applications.customers.services.webhooks.webhook_service import (
     create_notification_message,
     NotificationMessageType
 )
+from server.config.apis import NotificationEvents
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from typing import Annotated
@@ -38,7 +42,8 @@ customer_api_webhook_router = APIRouter('/customer/webhooks', tags=['Router for 
 async def update_customer_job(merchant_api_model:Annotated[MerchantAPI, Depends(get_merchants_api_key)],
                               merchant_signature:Annotated[str, Depends(get_merchant_signature)],
                               agent_completed_job:AgentCompletedJob,
-                              session_db:Annotated[AsyncSession, Depends(get_relational_db_session)]):
+                              session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
+                              events_manager:Annotated[NotificationEvents, Depends(get_notifications_events)]):
     #checking the signature from client 
     if not merchant_api_model.check_signature(
         data=agent_completed_job.model_dump_json(),
@@ -147,6 +152,24 @@ async def update_customer_job(merchant_api_model:Annotated[MerchantAPI, Depends(
         raise HTTPException(
             status_code=500,
             detail='Database error. Unable to operate database.'
+        )
+
+    #setting the event for notification
+    noti_data_dict = {
+        'customer_noti': {
+            'noti_id':str(customer_notification.id),
+            'noti_header':customer_notification.notification_header,
+            'noti_message':customer_notification.notification_message
+        }
+    }
+    try:
+        await events_manager.event_set(
+            data=noti_data_dict
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail='Unable to set the event for the customer notification made.'
         )
 
     return 
