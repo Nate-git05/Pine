@@ -28,6 +28,7 @@ class AgentJob(Base):
     id:Mapped[UUID] = mapped_column(Uuid, primary_key=True) #unique identifier for the job 
     job_name:Mapped[str] = mapped_column(String(length=20), nullable=False)
     job_description:Mapped[str] = mapped_column(String(length=100), nullable=True)
+    job_summary:Mapped[str] = mapped_column(String, nullable=True)
 
     #state and price attributes for the job
     job_state:AgentJobState = mapped_column(String(length=10), nullable=False)

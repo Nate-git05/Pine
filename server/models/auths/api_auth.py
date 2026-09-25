@@ -36,7 +36,7 @@ class MerchantAPI(Base):
 
         #getting the hmac signature 
         signature = hmac.new(
-            key=self.api_key.bytes,
+            key=self.webhook_secret.bytes,
             msg=encoded_data,
             digestmod=hashlib.sha256
         )
@@ -48,7 +48,7 @@ class MerchantAPI(Base):
 
         #getting the signature -> api key data 
         signature = hmac.new(
-            self.api_key.bytes,
+            self.webhook_secret.bytes,
             encoded_data,
             hashlib.sha256
         )

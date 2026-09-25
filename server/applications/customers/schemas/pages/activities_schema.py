@@ -86,6 +86,7 @@ class IndividualJob(BaseModel):
     job_description:str = None 
     job_price:float = None
     job_rating:int | None = None
+    job_summary:str = None
 
     #agent atributes 
     hired_agent_id:str = None
