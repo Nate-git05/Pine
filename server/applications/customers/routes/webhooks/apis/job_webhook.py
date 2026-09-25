@@ -21,11 +21,11 @@ from server.applications.customers.schemas.webhooks.webhook_schema import (
     AgentCompletedJob
 )
 from server.applications.customers.services.webhooks.webhook_service import (
-    get_merchants_api_key,
+    get_merchants_api_model,
     get_merchant_signature,
     get_merchant,
-    create_notification_header,
-    create_notification_message,
+    create_job_notification_header,
+    create_job_notification_message,
     NotificationMessageType
 )
 from server.config.apis import NotificationEvents
@@ -38,8 +38,8 @@ from uuid import UUID
 customer_api_webhook_router = APIRouter('/customer/webhooks', tags=['Router for the apis webhooks'])
 
 """Route for the webhook for the completed job"""
-@customer_api_webhook_router.post('/requests')
-async def update_customer_job(merchant_api_model:Annotated[MerchantAPI, Depends(get_merchants_api_key)],
+@customer_api_webhook_router.patch('/jobs')
+async def update_customer_job(merchant_api_model:Annotated[MerchantAPI, Depends(get_merchants_api_model)],
                               merchant_signature:Annotated[str, Depends(get_merchant_signature)],
                               agent_completed_job:AgentCompletedJob,
                               session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
@@ -95,11 +95,10 @@ async def update_customer_job(merchant_api_model:Annotated[MerchantAPI, Depends(
         )
     
     #creating the notifications for completed jobs 
-    customer_notification_header = create_notification_header(agent_name=agent_job.hired_agent_name)
-    customer_notification_message = create_notification_message(
+    customer_notification_header = create_job_notification_header(agent_name=agent_job.hired_agent_name)
+    customer_notification_message = create_job_notification_message(
         agent_job.hired_agent_name, 
         agent_job.job_name, 
-        agent_job.job_summary,
         NotificationMessageType.CUSTOMER)
     
     #customer notification
@@ -109,13 +108,12 @@ async def update_customer_job(merchant_api_model:Annotated[MerchantAPI, Depends(
         notification_state=NotificationState.UNREAD,
         notification_type=NotificationType.JOB_COMPLETED,
         customer_id=agent_job.customer_id,
-        job_id=agent_job.id,
         created_at=datetime.now(timezone.utc)
     )
 
     #getting the merchant 
-    merchant_notification_header = create_notification_header(agent_name=agent_job.hired_agent_name)
-    merchant_notification_message = create_notification_message(
+    merchant_notification_header = create_job_notification_header(agent_name=agent_job.hired_agent_name)
+    merchant_notification_message = create_job_notification_message(
         agent_job.hired_agent_name,
         job_name=None,
         job_summary=None,

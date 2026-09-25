@@ -3,6 +3,7 @@ from fastapi.requests import Request
 from fastapi.exceptions import HTTPException
 from server.models.auths.api_auth import MerchantAPI
 from server.models.users.merchants import Merchant
+from server.models.activities.jobs.agent_job import AgentJob
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from enum import StrEnum
@@ -10,7 +11,7 @@ from uuid import UUID
 
 """Dependency function to retrieve the merchants api key"""
 #dependency function auht the merchant with api key 
-async def get_merchants_api_key(request:Request):
+async def get_merchants_api_model(request:Request):
     #getting the database session 
     try:
         database_session:AsyncSession = request.app.state.relational_database 
@@ -87,15 +88,47 @@ class NotificationMessageType(StrEnum):
     MERCHANT='merchant'
 
 #helper functions to create notification message 
-def create_notification_message(agent_name:str, job_name:str | None, job_summary:str | None, message_type:NotificationMessageType):
+def create_job_notification_message(agent_name:str, job_name:str | None,  message_type:NotificationMessageType):
     match message_type:
         case NotificationMessageType.CUSTOMER:
-            return f'Your agent {agent_name} was able to complete the job {job_name} assigned to it.\
-                     Job Summary:{job_summary}'
+            return f'Hey your agent {agent_name} just completed the job {job_name}\
+                     assigned to it. Check it out in your activity page to view it.'
         
         case NotificationMessageType.MERCHANT:
             return f'Congrats your agent had just completed a job for a customer.'
 
 #helper function to create notification header
-def create_notification_header(agent_name:str):
+def create_job_notification_header(agent_name:str):
     return f'{agent_name} has just completed a job.'
+
+#helper function -> gets the agent for the request 
+async def get_request_job(session_db:AsyncSession, job_id_str:str) -> AgentJob:
+    #casting job id str -> uuid 
+    try:
+        job_id = UUID(job_id_str) 
+    except Exception as error:
+        raise error 
+
+    #database query for the job
+    try:
+        agent_job_query = await session_db.execute(select(AgentJob).where(
+            AgentJob.id == job_id
+        ))
+        agent_job = agent_job_query.scalar_one_or_none()
+    except Exception as error:
+        raise error 
+
+    #check if job was queried 
+    if not agent_job:
+        raise Exception('Unable to locate the job at the job id.')
+
+    return agent_job #returning the agents job
+
+#helper functions to create notification header
+def create_request_notification_header(agent_name:str):
+    return f'{agent_name} has a request for a job.'
+
+#helper function to create notification message 
+def create_request_notification_message(agent_name:str, job_name:str):
+    return f'Hey your agent {agent_name} has made a request for the job\
+             {job_name}. Check your activity page to view the request.'

@@ -24,7 +24,7 @@ class MerchantAPI(Base):
     webhook_secret:Mapped[UUID] = mapped_column(Uuid, unique=True, nullable=False)
 
     #relationship attributes 
-    merchant_id:Mapped[UUID] = mapped_column(ForeignKey('merchants.id'))
+    merchant_id:Mapped[UUID] = mapped_column(ForeignKey('merchants.id'), unique=True, nullable=False)
 
     #audit attributes 
     created_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
