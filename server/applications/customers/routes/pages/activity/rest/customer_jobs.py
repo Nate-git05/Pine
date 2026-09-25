@@ -10,7 +10,6 @@ from server.models.activities.jobs.agent_job import (
     AgentJobState
 )
 from server.models.activities.jobs.job_request import AgentJobRequest
-from server.models.activities.transactions.job_payments import JobPayments
 from server.applications.customers.schemas.pages.activities_schema import (
     IndividualJobRequest,
     IndividualJob,

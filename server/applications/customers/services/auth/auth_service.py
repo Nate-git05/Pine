@@ -185,7 +185,7 @@ async def get_customer_context(request:Request) -> Customer:
         #invalid token -> customer signs back in
         raise HTTPException(
             status_code=404,
-            detail='Invalid token'
+            detail='Invalid token.'
         )
 
     #check if the session expired 
@@ -199,7 +199,7 @@ async def get_customer_context(request:Request) -> Customer:
             await session_db.rollback() #rolling back any changes made
             raise HTTPException(
                 status_code=500,
-                detail=''
+                detail='Database error. Unable to confirm session. Please try again.'
             )
 
         #token expired -> customer signs back in
@@ -216,7 +216,7 @@ async def get_customer_context(request:Request) -> Customer:
         await session_db.rollback() 
         raise HTTPException(
             status_code=500,
-            detail=''
+            detail='Database error. Please try again.'
         )
 
     #database query for the customer
@@ -228,7 +228,7 @@ async def get_customer_context(request:Request) -> Customer:
     except Exception:
         raise HTTPException(
             status_code=500,
-            detail=''
+            detail='Database error. Please try again.'
         )
 
     #check if customer was successfully queried

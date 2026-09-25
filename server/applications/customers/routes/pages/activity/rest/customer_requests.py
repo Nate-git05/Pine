@@ -128,20 +128,7 @@ async def customer_answer_requst(request_id_str:str,
             detail='Database error. Please try entering the response again.'
         )
 
-    #building out params for the request 
-    try:
-        merchant_api_signature = get_merchant_signature(session_db, customer_request)
-    except Exception:
-        raise HTTPException(
-            status_code=500,
-            detail='Database error. Please try entering the response again.'
-        )
-
     #initializing the params for the request
-    headers = {
-        'Content-Type':'application/json',
-        'Signature':merchant_api_signature
-    }
     data = json.dumps(
         {
             'job_id':str(customer_request.agent_job_id),
@@ -152,6 +139,17 @@ async def customer_answer_requst(request_id_str:str,
 
         }
     , separators=(',', ':'))
+    try:
+        merchant_api_signature = get_merchant_signature(session_db, customer_request, data=data)
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail='Database error. Please try entering the response again.'
+        )
+    headers = {
+            'Content-Type':'application/json',
+            'Signature':merchant_api_signature
+        }
     
     #sending webhook over to the hosted agent server
     try:
