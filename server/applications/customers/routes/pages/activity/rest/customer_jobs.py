@@ -14,7 +14,8 @@ from server.models.activities.transactions.job_payments import JobPayments
 from server.applications.customers.schemas.pages.activities_schema import (
     IndividualJobRequest,
     IndividualJob,
-    CustomerJobRating
+    CustomerJobRating,
+    RatingResponse
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
@@ -118,6 +119,52 @@ async def get_customer_job(job_id_str:str,
     return returned_job #returning the job to the client 
 
 """Route to post rating for customer"""
-@customer_activity_router.post('/job/rating/{job_id_str}')
+@customer_activity_router.post('/job/rating/{job_id_str}', response_model=RatingResponse)
 async def post_customer_job_rating(job_id_str:str,
-                                   session_db:Annotated[AsyncSession, Depends(get_relational_db_session)])
+                                   customer_info:CustomerJobRating,
+                                   session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
+                                   customer:Annotated[Customer, Depends(get_current_customer)]):
+    #casting the id str -> uuid 
+    try:
+        job_id = UUID(job_id_str)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail='Invalid id. Please entering the rating again.'
+        )
+
+    #database query for the job 
+    try:
+        job_query = await session_db.execute(select(AgentJob).where(and_(
+            AgentJob.id == job_id,
+            AgentJob.customer_id == customer.id
+        )))
+        agent_job = job_query.scalar_one_or_none()
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail='Database error. Please try entering the rating again.'
+        )
+
+    #check if the job was queried
+    if not agent_job:
+        raise HTTPException(
+            status_code=400,
+            detail='Unable to locate the job. Please try entering the rating again.'
+        )
+
+    #updating the SQL model 
+    try:
+        agent_job.job_rating = customer_info.job_rating
+        await session_db.commit()
+    except Exception:
+        await session_db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail='Database error. Please try entering the rating again.'
+        )
+
+    #response to the client 
+    return RatingResponse(
+        response='Thank you for your rating!'
+    )

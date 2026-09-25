@@ -125,3 +125,7 @@ class CustoemrResquestAnswer(BaseModel):
 #Schema for the customer rating for job
 class CustomerJobRating(BaseModel):
     job_rating:float = None 
+
+#Schema for the response for the job rating 
+class RatingResponse(BaseModel):
+    response:str = None 

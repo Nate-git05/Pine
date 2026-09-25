@@ -72,3 +72,7 @@ def get_customer_payments_lst(customer_payments:list[JobPayments]):
 #Helper function to get the agents hosted url 
 async def get_agent_url(session_db:AsyncSession):
     pass
+
+#helper function to get the merchants signature -> and sign it 
+async def get_merchant_signature(session_db:AsyncSession):
+    pass
