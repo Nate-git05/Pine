@@ -4,14 +4,17 @@ from server.applications.customers.schemas.pages.activities_schema import (
     JobReturned,
     PaymentReturned
 )
+from server.models.users.customers import Customer
 from server.models.activities.jobs.job_request import AgentJobRequest
 from server.models.activities.jobs.agent_job import (
     AgentJob,
     AgentJobState
 )
+from server.models.agents.agent import Agent
+from server.models.agents.hired_agent import HiredAgent
 from server.models.activities.transactions.job_payments import JobPayments
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, and_
 
 #Helper function takes the job requests lst -> packages in pydantic model 
 def job_reqest_lst_returned(job_request_lst:list[AgentJobRequest]) -> list:
@@ -70,9 +73,32 @@ def get_customer_payments_lst(customer_payments:list[JobPayments]):
     return customer_payments #returning the lst of payments
 
 #Helper function to get the agents hosted url 
-async def get_agent_url(session_db:AsyncSession):
-    pass
+async def get_agent_url(session_db:AsyncSession, request:AgentJobRequest):
+    try:
+        hired_agent_query = await session_db.execute(select(HiredAgent).where(and_(
+            HiredAgent.id == request.hired_agent_id
+        )))
+        hired_agent = hired_agent_query.scalar_one_or_none()
+
+        #check if hired agent was found
+        if not hired_agent:
+            raise Exception('Unable to locate the hired agent.')
+
+        #getting the agent from the hired agent 
+        agent_query = await session_db.execute(select(Agent).where(
+            Agent.id == hired_agent.agent_id
+        ))
+        agent = agent_query.scalar_one_or_none()
+    except Exception as error:
+        raise error
+
+    #check if agent was queried
+    if not agent:
+        raise Exception('Unable to locate the agent from hired agent id.')
+
+    return agent.agents_webhook_url #returning the agents url for webhook
 
 #helper function to get the merchants signature -> and sign it 
-async def get_merchant_signature(session_db:AsyncSession):
+async def get_merchant_signature(session_db:AsyncSession, request:AgentJobRequest):
+    
     pass

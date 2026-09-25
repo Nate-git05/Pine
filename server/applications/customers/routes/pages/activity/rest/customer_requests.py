@@ -50,14 +50,14 @@ async def get_customer_job_request(request_id_str:str,
     except Exception:
         raise HTTPException(
             status_code=500,
-            detail=''
+            detail='Database error. Please try selecting job request again.'
         )
 
     #check if the request queried 
     if not job_request:
         raise HTTPException(
             status_code=400,
-            detail=''
+            detail='Unable to locate request. Please try again.'
         )
 
     #building pydantic model for job request 
@@ -121,7 +121,7 @@ async def customer_answer_requst(request_id_str:str,
 
     #getting the hired agent info -> getting the hired agent info for request 
     try:
-        agent_url = await get_agent_url(session_db)
+        agent_url = await get_agent_url(session_db, customer_request)
     except Exception:
         raise HTTPException(
             status_code=500,
@@ -130,7 +130,7 @@ async def customer_answer_requst(request_id_str:str,
 
     #building out params for the request 
     try:
-        merchant_api_signature = get_merchant_signature(session_db)
+        merchant_api_signature = get_merchant_signature(session_db, customer_request)
     except Exception:
         raise HTTPException(
             status_code=500,
