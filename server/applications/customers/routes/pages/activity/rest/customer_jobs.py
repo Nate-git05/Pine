@@ -48,14 +48,14 @@ async def get_customer_job_request(request_id_str:str,
     except Exception:
         raise HTTPException(
             status_code=500,
-            detail=''
+            detail='Database error. Please try selecting the job again.'
         )
 
     #check if the request queried 
     if not job_request:
         raise HTTPException(
             status_code=400,
-            detail=''
+            detail='Unable to locate the job. Please try selecting the job again.'
         )
 
     #building pydantic model for job request 
