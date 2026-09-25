@@ -5,16 +5,12 @@ from fastapi import Depends
 from server.applications.customers.services.auth.auth_service import get_current_customer
 from server.app import get_relational_db_session
 from server.models.users.customers import Customer
-from server.models.activities.jobs.agent_job import (
-    AgentJob,
-    AgentJobState
-)
 from server.models.activities.jobs.job_request import AgentJobRequest
-from server.models.activities.transactions.job_payments import JobPayments
 from server.applications.customers.schemas.pages.activities_schema import (
     IndividualJobRequest,
-    IndividualJob
+    CustoemrResquestAnswer
 )
+from server.applications.customers.services.pages.activity_service import get_agent_url
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from typing import Annotated
@@ -63,55 +59,51 @@ async def get_customer_job_request(request_id_str:str,
         request_description=job_request.request_description,
         agent_current_job_summary=job_request.job_summary,
         hired_agent_id=str(job_request.hired_agent_id),
-        hired_agent_name=job_request.hired,
+        hired_agent_name=job_request.hired_agent_name,
         requested_at=job_request.request_made_at.strftime("%I:%M %p")
     )
 
     return job_request_returned #request returned to client 
 
-"""Route to get the customer done/active job"""
-@customer_activity_router.get('/jobs/{job_id_str}', response_model=IndividualJob)
-async def get_customer_job(job_id_str:str,
-                           session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
-                           customer:Annotated[Customer, Depends(get_current_customer)]):
-    #casting the job id str -> uuid 
+"""Route for customer to answer the request"""
+@customer_activity_router.post('/request/answer/{request_id_str}')
+async def customer_answer_requst(request_id_str:str,
+                                 customer_info:CustoemrResquestAnswer,
+                                 session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
+                                 customer:Annotated[Customer, Depends(get_current_customer)]):
+    #cast request id str -> uuid 
     try:
-        job_id = UUID(job_id_str) 
+        request_id = UUID(request_id_str)
     except Exception:
-        raise HTTPException(
-            status_code=400,
-            detail='Invalid id. Please try selecting the job again.'
-        )
+        raise HTTPException()
 
-    #database query for the agents job 
+    #database query -> job request
     try:
-        job_query = await session_db.execute(select(AgentJob).where(and_(
-            AgentJob.id == job_id,
-            AgentJob.customer_id == customer.id
+        request_query = await session_db.execute(select(AgentJobRequest).where(and_(
+            AgentJobRequest.id == request_id,
+            AgentJobRequest.customer_id == customer.id
         )))
-        job = job_query.scalar_one_or_none()
+        customer_request = request_query.scalar_one_or_none()
     except Exception:
-        raise HTTPException(
-            status_code=500,
-            detail='Database error. Pleasetry selecting the job again.'
-        )
+        raise HTTPException()
 
-    #check if job was queried
-    if not job:
-        raise HTTPException(
-            status_code=400,
-            detail='Invalid id. Unable to locate the job.'
-        )
-    #building pydantic model for job returned 
-    returned_job = IndividualJob(
-        job_id=str(job.id),
-        job_name=job.job_name,
-        job_description=job.job_description,
-        job_price=job.job_rating if job.job_state else None,
-        hired_agent_id=job.hired_agent_id,
-        hired_agent_name=job.hired_agent_name,
-        assigned_at=job.assigned_at if job.job_state == AgentJobState.ACTIVE else None,
-        completed_at=job.completed_at if job.job_state == AgentJobState.DONE else None 
-    )
+    #check if request was queried 
+    if not customer_request:
+        raise HTTPException()
 
-    return returned_job #returning the job to the client 
+    #updating the model with the response 
+    try:
+        customer_request.customer_request_response = customer_info.customer_response
+        await session_db.commit()
+    except Exception:
+        await session_db.rollback()
+        raise HTTPException()
+
+    #getting the hired agent info -> getting the hired agent info for request 
+    try:
+        agent_url = await get_agent_url(session_db)
+    except Exception:
+        raise HTTPException()
+    
+    #sending sending the response for request -> agent
+    

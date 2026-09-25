@@ -28,6 +28,7 @@ class JobPayments(Base):
     agent_job_id:Mapped[UUID] = mapped_column(ForeignKey('agent_jobs.id'), nullable=False)
     hired_agent_id:Mapped[UUID] = mapped_column(ForeignKey('hired_agents.id'), nullable=False)
     customer_id:Mapped[UUID] = mapped_column(ForeignKey('customers.id'), nullable=False)
+    hired_agent_name:Mapped[str] = mapped_column()
 
     #audit attributes 
     created_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

@@ -219,6 +219,7 @@ class ActivityPageQuery:
 #Configuring the GraphQL router 
 activity_page_schema = Schema(query=ActivityPageQuery) #query schema 
 activity_page_graphql_router = GraphQLRouter(
+    prefix='/customer/activity',
     schema=activity_page_schema,
     context_getter=get_customer_context
 )

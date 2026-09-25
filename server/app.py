@@ -21,6 +21,7 @@ from server.config.database import (
 from server.config.apis import APIWrapper
 from contextlib import asynccontextmanager
 from pydantic_extra_types.phone_numbers import PhoneNumber
+import aiohttp
 from redis.asyncio import RedisError
 
 #getter functions for retrieving app states
@@ -57,6 +58,10 @@ def get_server_key(request:Request):
 #getting the server's number 
 def get_servers_number(request:Request):
     return PhoneNumber(request.app.state.server_number)
+
+#getting the server's async client for http requests 
+async def get_async_http(request:Request):
+    return request.app.state.http_client
 
 #app's lifespan function -> configures the servers attributes at startup time
 @asynccontextmanager
@@ -104,6 +109,9 @@ async def lifespan(app:FastAPI):
     #Getting the server private attributes 
     app.state.server_key = SERVER_SECRET_KEY
     app.state.server_number = PINENUMBER #adding the server's number to the app state
+
+    #Configuring the app's http async object 
+    app.state.http_client = aiohttp.ClientSession()
 
     yield #yields the application running 
 

@@ -13,7 +13,8 @@ from server.models.activities.jobs.job_request import AgentJobRequest
 from server.models.activities.transactions.job_payments import JobPayments
 from server.applications.customers.schemas.pages.activities_schema import (
     IndividualJobRequest,
-    IndividualJob
+    IndividualJob,
+    CustomerJobRating
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
@@ -115,3 +116,8 @@ async def get_customer_job(job_id_str:str,
     )
 
     return returned_job #returning the job to the client 
+
+"""Route to post rating for customer"""
+@customer_activity_router.post('/job/rating/{job_id_str}')
+async def post_customer_job_rating(job_id_str:str,
+                                   session_db:Annotated[AsyncSession, Depends(get_relational_db_session)])

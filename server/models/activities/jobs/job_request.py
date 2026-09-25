@@ -39,6 +39,7 @@ class AgentJobRequest(Base):
     hired_agent_id:Mapped[UUID] = mapped_column(ForeignKey('hired_agents.id'), nullable=False)
     agent_job_id:Mapped[UUID] = mapped_column(ForeignKey('agent_jobs.id'), nullable=False)
     customer_id:Mapped[UUID] = mapped_column(ForeignKey('customers.id'), nullable=False)
+    hired_agent_name:Mapped[str] = mapped_column(String(length=50), nullable=False)
 
     #audit attributes 
     request_made_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

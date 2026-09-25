@@ -10,6 +10,8 @@ from server.models.activities.jobs.agent_job import (
     AgentJobState
 )
 from server.models.activities.transactions.job_payments import JobPayments
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 #Helper function takes the job requests lst -> packages in pydantic model 
 def job_reqest_lst_returned(job_request_lst:list[AgentJobRequest]) -> list:
@@ -66,3 +68,7 @@ def get_customer_payments_lst(customer_payments:list[JobPayments]):
         customer_payments.append(returned_payment) #appending the payment to lst
 
     return customer_payments #returning the lst of payments
+
+#Helper function to get the agents hosted url 
+async def get_agent_url(session_db:AsyncSession):
+    pass

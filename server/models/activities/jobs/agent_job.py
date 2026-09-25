@@ -37,8 +37,8 @@ class AgentJob(Base):
     #relationship params for the job
     hired_agent_id:Mapped[UUID] = mapped_column(ForeignKey('hired_agents.id'), nullable=False)
     customer_id:Mapped[UUID] = mapped_column(ForeignKey('hired_agents.id'), nullable=False)
+    hired_agent_name:Mapped[str] = mapped_column(String(length=50), nullable=False)
 
     #audit attributes 
     assigned_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    requested_help:Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)

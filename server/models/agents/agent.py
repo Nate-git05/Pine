@@ -48,6 +48,9 @@ class Agent(Base):
     imgicon_storage_key:Mapped[str] = mapped_column(String(length=150), nullable=True)
     skill_file_storage_key:Mapped[str] = mapped_column(String(length=150), nullable=True)
 
+    #url where to send the webhooks
+    agents_webhook_url:Mapped[str] = mapped_column(String, nullable=False)
+
     #audit attributes 
     created_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
