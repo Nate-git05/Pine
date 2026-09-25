@@ -7,8 +7,11 @@ from server.config.configuration import (
 )
 from openai import AsyncClient
 from server.config.configuration import OPENAI_API_KEY
+from asyncio import (
+    Event, 
+    Queue
+)
 
-"""Configuring the API wrapper for apis used in the server"""
 class APIWrapper:
     def __init__(self):
         self.twilio_client = None #flag for twilio client api
@@ -29,9 +32,40 @@ class APIWrapper:
     def configure_openai_api(self, api_key:str=OPENAI_API_KEY):
         try:
             openai_client = AsyncClient(
-                api_key=OPENAI_API_KEY
+                api_key=api_key
             )
         except Exception as error:
             raise error
 
         return openai_client #returning the openai client
+
+#Wrappper for the server notification events 
+class NotificationEvents:
+    def __init__(self):
+        self.notification_event = Event() #event obj for 
+        self.async_queue = Queue()
+
+    #method flips event to wait 
+    async def event_wait(self):
+        await self.notification_event.wait() #holds the event -> waits to be flipped 
+
+    #method to flip event to set 
+    async def event_set(self, data:dict):
+        #appending data to the async queue
+        try:
+            await self.async_queue.put(data) #signifies to the event the data 
+            await self.notification_event.set() #starts the event
+        except Exception as error:
+            raise error 
+
+    #delete from queue 
+    async def get_item(self):
+        if not self.async_queue:
+            return 
+
+        #else
+        try:
+            item = await self.async_queue.get()
+            return item #returning item in queue 
+        except Exception as error:
+            raise error
