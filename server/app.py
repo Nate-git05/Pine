@@ -18,7 +18,10 @@ from server.config.database import (
     VectorDatabase,
     CollectionType
 )
-from server.config.apis import APIWrapper
+from server.config.apis import (
+    APIWrapper,
+    NotificationEvents
+)
 from contextlib import asynccontextmanager
 from pydantic_extra_types.phone_numbers import PhoneNumber
 import aiohttp
@@ -50,6 +53,9 @@ def get_openai_client(request:Request):
     return api_wrapper.configure_openai_api(
         api_key=OPENAI_API_KEY
     )
+
+def get_notifications_events(request:Request):
+    return request.app.state.notifications_event
 
 #getting the server's secret key
 def get_server_key(request:Request):
@@ -105,6 +111,9 @@ async def lifespan(app:FastAPI):
     #Starting up the servers api wrapper -> wraps apis used across server
     api_wrapper = APIWrapper()
     app.state.api_wrapper = api_wrapper
+
+    #configuring the servers notification events 
+    app.state.notifications_event = NotificationEvents()
 
     #Getting the server private attributes 
     app.state.server_key = SERVER_SECRET_KEY
