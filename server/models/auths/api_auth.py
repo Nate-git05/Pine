@@ -2,7 +2,6 @@
 from server.config.configuration import Base
 from sqlalchemy import (
     Uuid,
-    String,
     DateTime,
     ForeignKey 
 )
@@ -22,6 +21,7 @@ class MerchantAPI(Base):
     #defining attributes -> of the SQL 
     id:Mapped[UUID] = mapped_column(Uuid, primary_key=True) #unique identifier 
     api_key:Mapped[UUID] = mapped_column(Uuid, unique=True, nullable=False, index=True)
+    webhook_secret:Mapped[UUID] = mapped_column(Uuid, unique=True, nullable=False)
 
     #relationship attributes 
     merchant_id:Mapped[UUID] = mapped_column(ForeignKey('merchants.id'))
