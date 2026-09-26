@@ -50,9 +50,12 @@ def get_twilio_client(request:Request):
 def get_openai_client(request:Request):
     api_wrapper:APIWrapper = request.app.state.api_wrapper
 
-    return api_wrapper.configure_openai_api(
-        api_key=OPENAI_API_KEY
-    )
+    return api_wrapper.configure_openai_api()
+
+def get_stripe_client(request:Request):
+    api_wrapper:APIWrapper = request.app.state.api_wrapper
+
+    return api_wrapper.configure_stripe_client()
 
 def get_notifications_events(request:Request):
     return request.app.state.notifications_event
