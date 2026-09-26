@@ -70,6 +70,29 @@ class CacheDatabase:
         except RedisError as error:
             raise error
 
+    #redis list insert 
+    async def insert_list(self, key:str, value:str, exp_time:int=600):
+        try:
+            await self.redis_db.rpush(key, value) #inserting the item in the lst 
+
+            #getting lst elements 
+            redis_lst = self.redis_db.lrange(key, 0, -1) #getting full raing of the lst
+            if len(redis_lst) == 1:
+                self.redis_db.expire(key, time=exp_time)
+        except RedisError as error:
+            raise error   
+
+    #method to retriev value from redis lst
+    async def retrieve_lst(self, key:str):
+        try:
+            value = self.redis_db.lpop(key) #getting first side value 
+            if not value:
+                return None
+
+            return value #gatting the value in redis lst
+        except RedisError as error:
+            raise error 
+
     #Get
     async def retrieve(self, key:str):
         #retrieves the value in cache at key
