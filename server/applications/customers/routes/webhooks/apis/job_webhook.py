@@ -4,7 +4,10 @@ from fastapi.exceptions import HTTPException
 from fastapi import Depends
 from server.app import (
     get_relational_db_session,
-    get_notifications_events
+    get_notifications_events,
+    get_server_key,
+    get_cache_db,
+    get_async_http
 )
 from server.models.users.merchants import Merchant
 from server.models.auths.api_auth import MerchantAPI
@@ -26,10 +29,13 @@ from server.applications.customers.services.webhooks.webhook_service import (
     get_merchant,
     create_job_notification_header,
     create_job_notification_message,
+    send_cached_job,
     NotificationMessageType
 )
 from server.config.apis import NotificationEvents
+from server.config.database import CacheDatabase
 from sqlalchemy.ext.asyncio import AsyncSession
+from aiohttp import ClientSession
 from sqlalchemy import select, and_
 from typing import Annotated
 from datetime import datetime, timezone
@@ -43,7 +49,11 @@ async def update_customer_job(merchant_api_model:Annotated[MerchantAPI, Depends(
                               merchant_signature:Annotated[str, Depends(get_merchant_signature)],
                               agent_completed_job:AgentCompletedJob,
                               session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
-                              events_manager:Annotated[NotificationEvents, Depends(get_notifications_events)]):
+                              events_manager:Annotated[NotificationEvents, Depends(get_notifications_events)],
+                              WEBHOOK_URL:Annotated[str, Depends()],
+                              pine_server_key:Annotated[str, Depends(get_server_key)],
+                              cache_db:Annotated[CacheDatabase, Depends(get_cache_db)],
+                              http_client:Annotated[ClientSession, Depends(get_async_http)]):
     #checking the signature from client 
     if not merchant_api_model.check_signature(
         data=agent_completed_job.model_dump_json(),
@@ -150,6 +160,21 @@ async def update_customer_job(merchant_api_model:Annotated[MerchantAPI, Depends(
         raise HTTPException(
             status_code=500,
             detail='Database error. Unable to operate database.'
+        )
+
+    #making request to ensure that
+    try:
+        await send_cached_job(
+            cache_key=str(agent_job.customer_id),
+            cache_db=cache_db,
+            http_client=http_client,
+            url_request=WEBHOOK_URL,
+            pine_server_key=pine_server_key
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail='Unable to send webhook request from webhook.'
         )
 
     #setting the event for notification
