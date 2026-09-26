@@ -49,3 +49,8 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL')
 if (not EMBEDDING_MODEL) or (not OPENAI_API_KEY):
     raise ValueError('Unable to retrieve the OpenAI key nor the embedding model from the .env file.')
+
+#Stripe API
+STRIPE_API_KEY = os.getenv('STRIPE_API_KEY')
+if not STRIPE_API_KEY:
+    raise ValueError('Unable to retrieve the Stripe api key from .env file.')

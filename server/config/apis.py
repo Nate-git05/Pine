@@ -3,7 +3,8 @@ from twilio.rest import Client
 from server.config.configuration import (
     TWILIO_SECRET,
     TWILIO_API_KEY,
-    TWILIO_ACCOUNT_SID
+    TWILIO_ACCOUNT_SID,
+    STRIPE_API_KEY
 )
 from openai import AsyncClient
 from server.config.configuration import OPENAI_API_KEY
@@ -11,6 +12,7 @@ from asyncio import (
     Event, 
     Queue
 )
+from stripe import StripeClient
 
 class APIWrapper:
     def __init__(self):
@@ -38,6 +40,16 @@ class APIWrapper:
             raise error
 
         return openai_client #returning the openai client
+
+    #configuring the Stripe client
+    def configure_stripe_client(
+            api_key:str=STRIPE_API_KEY
+        ):
+        stripe_client = StripeClient(
+            api_key=api_key
+        )
+
+        return stripe_client
 
 #Wrappper for the server notification events 
 class NotificationEvents:
