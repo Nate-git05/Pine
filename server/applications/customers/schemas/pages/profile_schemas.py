@@ -10,7 +10,8 @@ class CustomerProfile:
     customer_number:str = None 
 
     #payment attribute 
-    active_card:str = None 
+    card_type:str = None
+    active_card_last4:str = None 
 
     #agent/jobs attributes 
     number_of_agents:int = None 
