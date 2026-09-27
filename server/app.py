@@ -20,7 +20,8 @@ from server.config.database import (
 )
 from server.config.apis import (
     APIWrapper,
-    NotificationEvents
+    NotificationEvents,
+    IncomingJobsEvents
 )
 from contextlib import asynccontextmanager
 from pydantic_extra_types.phone_numbers import PhoneNumber
@@ -59,6 +60,10 @@ def get_stripe_client(request:Request):
 
 def get_notifications_events(request:Request):
     return request.app.state.notifications_event
+
+#getting the servers incoming jobs events
+def get_jobs_events(request:Request):
+    return request.app.state.jobs_event
 
 #getting the server's secret key
 def get_server_key(request:Request):
@@ -115,8 +120,9 @@ async def lifespan(app:FastAPI):
     api_wrapper = APIWrapper()
     app.state.api_wrapper = api_wrapper
 
-    #configuring the servers notification events 
+    #configuring the servers events 
     app.state.notifications_event = NotificationEvents()
+    app.state.jobs_event = IncomingJobsEvents()
 
     #Getting the server private attributes 
     app.state.server_key = SERVER_SECRET_KEY

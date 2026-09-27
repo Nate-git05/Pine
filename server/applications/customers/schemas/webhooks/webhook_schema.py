@@ -26,5 +26,5 @@ class ClientWebhook(BaseModel):
 class AgentJobYield(BaseModel):
     agent_name:str = None
     job_name:str = None 
-    job_description_str = None 
+    job_description_str:str = None 
     job_price:float = None 

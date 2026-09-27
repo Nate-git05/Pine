@@ -6,7 +6,7 @@ from server.applications.customers.services.auth.auth_service import get_current
 from server.app import (
     get_cache_db,
     get_server_key,
-    get_server_events
+    get_jobs_events
 )
 from server.models.users.customers import Customer
 from server.applications.customers.schemas.webhooks.webhook_schema import (
@@ -14,7 +14,7 @@ from server.applications.customers.schemas.webhooks.webhook_schema import (
     AgentJobYield
 )
 from server.config.database import CacheDatabase
-from server.config.apis import ServerEvents
+from server.config.apis import IncomingJobsEvents
 from typing import Annotated
 import json
 from redis.asyncio import RedisError
@@ -27,7 +27,7 @@ async def send_cached_job(client_signature:Annotated[str, Depends()],
                           customer_info:ClientWebhook,
                           pine_server_key:Annotated[str, Depends(get_server_key)],
                           cache_db:Annotated[CacheDatabase, Depends(get_cache_db)],
-                          server_events:Annotated[ServerEvents, Depends(get_server_events)]):
+                          server_events:Annotated[IncomingJobsEvents, Depends(get_jobs_events)]):
     #getting the signature 
     signature = hmac.new(
         pine_server_key.encode('utf-8'),
@@ -74,7 +74,7 @@ async def send_cached_job(client_signature:Annotated[str, Depends()],
 """Route for a server side event -> yields job created"""
 @customer_api_webhook_router.get('/client/event')
 async def stream_customer_job(customer_id:Annotated[Customer, Depends(get_current_customer)],
-                              server_events:Annotated[ServerEvents, Depends(get_server_events)]):
+                              server_events:Annotated[IncomingJobsEvents, Depends(get_jobs_events)]):
     async def get_customer_job() -> dict:
         while not server_events.async_queue:
             server_events.event_wait()
