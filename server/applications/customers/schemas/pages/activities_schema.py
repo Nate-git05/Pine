@@ -5,6 +5,7 @@ from pydantic import (
     field_validator,
     model_validator
 )
+from datetime import datetime
 import re
 
 """Custom exception for the graphql routes"""
@@ -29,6 +30,8 @@ class JobRequestResponse:
     status_code:int = None 
     response:str | None = None
     returned_job_requests:list[ReturnedJobRequest] | None = None
+    cursor:bool | None = None 
+    last_request_date:datetime | None = None 
 
 """Schemas for the agent jobs"""
 #individual job returned in lst
@@ -45,6 +48,8 @@ class JobReturnedResponse:
     status_code:int = None
     response:str | None = None 
     jobs_returned:list[JobReturned] | None = None 
+    cursor:bool | None = None 
+    last_job_date:datetime | None = None 
 
 """Schemas for the customers payments"""
 #individual payment in the lst
@@ -61,6 +66,8 @@ class PaymentsReturnedResponse:
     status_code:int = None 
     response:str | None = None
     payments_returned:list[PaymentReturned] | None = None 
+    cursor:bool | None = None 
+    last_payment_date:datetime | None = None 
 
 """Schemas for the pydantic models"""
 #schema for the individual job request returned 
@@ -97,7 +104,7 @@ class IndividualJob(BaseModel):
     completed_at:str | None = None
 
 #Schema for the customer to answer the request
-class CustoemrResquestAnswer(BaseModel):
+class CustomerRequestAnswer(BaseModel):
     customer_response:str = None 
 
     #validating the field

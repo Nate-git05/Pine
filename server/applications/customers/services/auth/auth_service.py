@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 import hmac 
 import hashlib
+import json
 
 """Helper functions for the auth routes"""
 #function to generate user six digit code
@@ -151,6 +152,20 @@ async def get_customer_context(request:Request) -> Customer:
             detail='Database error. Session handling gone wrong.'
         )
 
+    #getting the data from the request 
+    try:
+        request_data:dict | None = await json.loads(request.json())
+        if not request_data:
+            raise HTTPException(
+                status_code=400,
+                detail=''
+            )
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail=''
+        )
+
     #getting token from request str -> uuid 
     try:
         customer_token_str:str = request.headers.get('Authorization').strip('Bearer')
@@ -240,12 +255,16 @@ async def get_customer_context(request:Request) -> Customer:
 
     return {
         'customer':customer,
-        'database_session':session_db
+        'database_session':session_db,
+        'cursor':request_data.get('cursor'),
+        'last_date':request_data.get('last_date')
     }
 
 #dependency function to retrive the validated customer
 async def get_customer(context_info:Annotated[dict, Depends(get_customer_context)]):
     return {
         'customer':context_info.get('customer'),
-        'database_session':context_info.get('database_session')
+        'database_session':context_info.get('database_session'),
+        'cursor':context_info.get('cursor'),
+        'last_date':context_info.get('last_date')
     }

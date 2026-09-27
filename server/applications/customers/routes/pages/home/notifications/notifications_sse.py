@@ -9,6 +9,7 @@ from server.applications.customers.schemas.pages.notification_schemas import SSE
 from server.models.users.customers import Customer
 from server.config.apis import NotificationEvents
 from typing import Annotated
+import json
 
 #global router for customer noti server side events
 customer_sse_router = APIRouter(prefix='/customer/notifications', tags=['Route for server side events'])
@@ -22,11 +23,26 @@ async def send_notification_event(customer:Annotated[Customer, Depends(get_curre
         while not events_manager.async_queue:
             events_manager.event_wait() #event waits 
 
-        data:dict = events_manager.get_item()
-        return data 
+        #looping through the notis in queue 
+        try:
+            for noti in events_manager.async_queue:
+                if noti.get('customer_id') == str(customer.id):
+                    customer_data:dict = json.loads(noti)
+                    break
+        except Exception as err:
+            raise err
 
-    events_manager.event_wait() #waiting the event again
-    notification_data:dict = get_notification_data() #getting data from the inner function
+        return customer_data #returning the customer data 
+
+    #getting the customer data 
+    try:
+        customer_data:dict = await get_notification_data()
+        notification_data:dict = customer_data.get('customer_noti')
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail='Unable to retrieve the customer notification data.'
+        )
 
     #pydantic model for the response 
     returned_noti = SSENotificationResponse(

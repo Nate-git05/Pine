@@ -193,6 +193,7 @@ async def customer_job_payment(payment_id_str:str,
 
     #building out params for request
     headers = {
+        'Content-type':'application/json',
         'Signature':pine_siganture
     }
     data = agent_job_model.model_dump_json()

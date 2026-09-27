@@ -47,7 +47,7 @@ async def send_cached_job(client_signature:Annotated[str, Depends()],
         )
 
     #storing the request in the cache 
-    cache_key = str(customer_info.customer_id)
+    cache_key = f'{str(customer_info.customer_id)}/{customer_info.agent_name}'
     try:
         await cache_db.insert(
             key=cache_key,
@@ -84,17 +84,17 @@ async def stream_customer_job(customer:Annotated[Customer, Depends(get_current_c
         try:
             for data in server_events.async_queue:
                 if data.get('customer_id') == str(customer.id):
-                    customer_data_str:str = data.get('customer_data')
+                    customer_data:dict = json.loads(data)
+                    break
 
-            #loading in the customer data -> python dict 
-            customer_data:dict = json.loads(customer_data_str)
-            return customer_data
+            return customer_data #returning the customer data 
         except Exception as err:
             raise err
 
     #getting the customer data from inner fucntion
     try:
-        customer_data = await get_customer_job()
+        server_data:dict = await get_customer_job()
+        customer_data:dict = server_data.get('customer_data')
     except Exception:
         raise HTTPException(
             status_code=400,

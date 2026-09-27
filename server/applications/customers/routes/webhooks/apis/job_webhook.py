@@ -166,7 +166,7 @@ async def update_customer_job(merchant_api_model:Annotated[MerchantAPI, Depends(
     #making request to ensure that
     try:
         await send_cached_job(
-            cache_key=str(agent_job.customer_id),
+            cache_key = f'{str(agent_job.customer_id)}/{agent_job.hired_agent_name}',
             cache_db=cache_db,
             http_client=http_client,
             url_request=WEBHOOK_URL,
