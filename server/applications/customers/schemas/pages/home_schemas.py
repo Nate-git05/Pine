@@ -19,3 +19,7 @@ class AgentsJobRequest(BaseModel):
     job_id:str = None 
     job_name:str = None 
     job_description:str = None
+
+#schema for the Payment response 
+class PaymentResponse(BaseModel):
+    response:str = None 

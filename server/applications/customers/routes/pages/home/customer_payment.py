@@ -21,7 +21,8 @@ from server.models.notifications.notification_message import (
 )
 from server.applications.customers.schemas.pages.home_schemas import (
     ReturnedPaymentsList,
-    AgentsJobRequest
+    AgentsJobRequest,
+    PaymentResponse
 )
 from server.applications.customers.services.pages.home_service import (
     get_returned_payments_lst,
@@ -84,7 +85,7 @@ async def get_customer_cards(customer:Annotated[Customer, Depends(get_current_cu
     )
 
 """Route for the customer to pay with selected card"""
-@customer_home_router.post('/payment/{payment_id_str}')
+@customer_home_router.post('/payment/{payment_id_str}', response_model=PaymentResponse)
 async def customer_job_payment(payment_id_str:str,
                                customer:Annotated[Customer, Depends(get_current_customer)], 
                                session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
@@ -273,7 +274,14 @@ async def customer_job_payment(payment_id_str:str,
             detail=''
         )
 
+    #returning success to the client 
+    return PaymentResponse(
+        response='Payment succeded. Agent is now beginning job.'
+    )
+
 """Route for the customer to add a card"""
 @customer_home_router.post('/add')
-async def add_customer_payment():
+async def add_customer_payment(customer:Annotated[Customer, Depends(get_current_customer)],
+                               session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
+                               stripe_api_key:Annotated[str, Depends(get_stripe_api_key)]):
     pass
