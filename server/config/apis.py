@@ -52,7 +52,7 @@ class APIWrapper:
         return stripe_client
 
 #Wrappper for the server notification events 
-class ServerEvents:
+class NotificationEvents:
     def __init__(self):
         self.notification_event = Event() #event obj for 
         self.async_queue = Queue()
@@ -73,7 +73,38 @@ class ServerEvents:
     #delete from queue 
     async def get_item(self):
         if not self.async_queue:
-            return 
+            return None 
+
+        #else
+        try:
+            item = await self.async_queue.get()
+            return item #returning item in queue 
+        except Exception as error:
+            raise error
+
+#Wrapper for the Incoming job events
+class IncomingJobsEvents:
+    def __init__(self):
+        self.jobs_event = Event()
+        self.async_queue = Queue()
+
+    #method flips event to wait 
+    async def event_wait(self):
+        await self.jobs_event.wait() #holds the event -> waits to be flipped 
+
+    #method to flip event to set 
+    async def event_set(self, data:dict):
+        #appending data to the async queue
+        try:
+            await self.async_queue.put(data) #signifies to the event the data 
+            await self.jobs_event.set() #starts the event
+        except Exception as error:
+            raise error 
+
+    #delete from queue 
+    async def get_item(self):
+        if not self.async_queue:
+            return None 
 
         #else
         try:
