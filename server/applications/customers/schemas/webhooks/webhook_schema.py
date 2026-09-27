@@ -12,3 +12,19 @@ class JobRequestWebhook(BaseModel):
     request_name:str = None 
     request_description:str = None 
     current_job_summary:str = None 
+
+#Schema for the client webhook
+class ClientWebhook(BaseModel):
+    customer_id:str = None
+    agent_name:str = None 
+
+    job_name:str = None 
+    job_description:str = None 
+    job_price:float = None 
+
+#schema for the sse event
+class AgentJobYield(BaseModel):
+    agent_name:str = None
+    job_name:str = None 
+    job_description_str = None 
+    job_price:float = None 

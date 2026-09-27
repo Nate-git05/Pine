@@ -47,4 +47,3 @@ async def customer_job_payment(customer:Annotated[Customer, Depends(get_current_
             status_code=500,
             detail=''
         )
-    
