@@ -52,7 +52,7 @@ class APIWrapper:
         return stripe_client
 
 #Wrappper for the server notification events 
-class NotificationEvents:
+class ServerEvents:
     def __init__(self):
         self.notification_event = Event() #event obj for 
         self.async_queue = Queue()
