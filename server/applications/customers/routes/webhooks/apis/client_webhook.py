@@ -13,6 +13,7 @@ from server.applications.customers.schemas.webhooks.webhook_schema import (
     ClientWebhook,
     AgentJobYield
 )
+from server.applications.customers.services.webhooks.webhook_service import get_client_signature
 from server.config.database import CacheDatabase
 from server.config.apis import IncomingJobsEvents
 from typing import Annotated
@@ -61,9 +62,10 @@ async def send_cached_job(client_signature:Annotated[str, Depends()],
     #setting the event to set for the customer cached job 
     try:
         await server_events.event_set(
-            data=json.loads(
-                customer_info.model_dump_json()
-            )
+            data=json.loads({
+                'customer_id':str(customer_info.customer_id),
+                'customer_data':customer_info.model_dump_json()
+            })
         )
     except Exception:
         raise HTTPException(
@@ -73,36 +75,39 @@ async def send_cached_job(client_signature:Annotated[str, Depends()],
 
 """Route for a server side event -> yields job created"""
 @customer_api_webhook_router.get('/client/event')
-async def stream_customer_job(customer_id:Annotated[Customer, Depends(get_current_customer)],
+async def stream_customer_job(customer:Annotated[Customer, Depends(get_current_customer)],
                               server_events:Annotated[IncomingJobsEvents, Depends(get_jobs_events)]):
     async def get_customer_job() -> dict:
         while not server_events.async_queue:
             server_events.event_wait()
 
-        #event is now set 
         try:
-            customer_data:dict = server_events.get_item()
-            return customer_data 
+            for data in server_events.async_queue:
+                if data.get('customer_id') == str(customer.id):
+                    customer_data_str:str = data.get('customer_data')
+
+            #loading in the customer data -> python dict 
+            customer_data:dict = json.loads(customer_data_str)
+            return customer_data
         except Exception as err:
             raise err
 
     #getting the customer data from inner fucntion
     try:
-        customer_data:dict = await get_customer_job()
-        if not customer_data:
-            raise Exception('Unable to locate the item in queue.')
+        customer_data = await get_customer_job()
     except Exception:
         raise HTTPException(
             status_code=400,
-            detail=''
+            detail='Unable to locate job for the customer.'
         )
-
+    
     #pydantic model for cached job 
     cached_job = AgentJobYield(
         agent_name=customer_data.get('agent_name'),
+        agent_id=customer_data.get('agent_id'),
         job_name=customer_data.get('job_name'),
         job_description_str=customer_data.get('job_description'),
-        job_price=customer_data.get('job_price')
+        job_price=(customer_data.get('job_price') / 100)
     )
 
     #yielding to the client

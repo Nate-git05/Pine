@@ -16,6 +16,12 @@ SERVER_SECRET_KEY = os.getenv('SERVER_SECRET_KEY')
 if not SERVER_SECRET_KEY:
     raise ValueError('Unable to retrieve the server\'s secret key.')
 
+#Server job webhook URL
+JOB_WEBHOOK_URL = os.getenv('JOB_WEBHOOK_URL')
+if not JOB_WEBHOOK_URL:
+    raise ValueError('Unable to retrieve the url for the job webhook.')
+
+"""Configuring the server\'s databases"""
 #Relational -> Postgres
 class Base(DeclarativeBase):
     pass

@@ -9,8 +9,9 @@ from server.config.configuration import (
     SERVER_SECRET_KEY,
     QDRANT_URL,
     QDRANT_API_KEY,
-    OPENAI_API_KEY,
-    EMBEDDING_MODEL
+    JOB_WEBHOOK_URL,
+    EMBEDDING_MODEL,
+    STRIPE_API_KEY
 )
 from server.config.database import (
     RelationalDatabase,
@@ -53,11 +54,6 @@ def get_openai_client(request:Request):
 
     return api_wrapper.configure_openai_api()
 
-def get_stripe_client(request:Request):
-    api_wrapper:APIWrapper = request.app.state.api_wrapper
-
-    return api_wrapper.configure_stripe_client()
-
 def get_notifications_events(request:Request):
     return request.app.state.notifications_event
 
@@ -76,6 +72,13 @@ def get_servers_number(request:Request):
 #getting the server's async client for http requests 
 async def get_async_http(request:Request):
     return request.app.state.http_client
+
+def get_job_webhook_url(request:Request):
+    return request.app.state.job_webhook_url
+
+#getting stripes api key
+def get_stripe_api_key(request:Request):
+    return request.app.state.stripe_api_key
 
 #app's lifespan function -> configures the servers attributes at startup time
 @asynccontextmanager
@@ -127,6 +130,8 @@ async def lifespan(app:FastAPI):
     #Getting the server private attributes 
     app.state.server_key = SERVER_SECRET_KEY
     app.state.server_number = PINENUMBER #adding the server's number to the app state
+    app.state.job_webhook_url = JOB_WEBHOOK_URL
+    app.state.stripe_api_key = STRIPE_API_KEY
 
     #Configuring the app's http async object 
     app.state.http_client = aiohttp.ClientSession()

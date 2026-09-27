@@ -16,6 +16,7 @@ class JobRequestWebhook(BaseModel):
 #Schema for the client webhook
 class ClientWebhook(BaseModel):
     customer_id:str = None
+    agent_id:str = None
     agent_name:str = None 
 
     job_name:str = None 

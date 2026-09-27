@@ -59,7 +59,7 @@ async def get_merchants_api_model(request:Request):
         )
 
 #dependency function to get the signature of the request
-def get_merchant_signature(request:Request):
+def get_client_signature(request:Request):
     signature = request.headers.get('Signature')
     if not signature:
         raise HTTPException(

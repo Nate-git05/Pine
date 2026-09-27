@@ -103,9 +103,12 @@ async def create_cusotmer_job_request(merchant_api_model:Annotated[MerchantAPI, 
 
     #building out data for sse event
     notification_data = {
-        'noti_id':str(customer_notification),
-        'noti_header':customer_notification.notification_header,
-        'noti_message':customer_notification.notification_message
+        'customer_id':str(customer_notification.customer_id),
+        'customer_noti':{
+            'noti_id':str(customer_notification),
+            'noti_header':customer_notification.notification_header,
+            'noti_message':customer_notification.notification_message
+        }
     }
 
     #starting the sse event for notification to client side 

@@ -7,7 +7,8 @@ from server.app import (
     get_notifications_events,
     get_server_key,
     get_cache_db,
-    get_async_http
+    get_async_http,
+    get_job_webhook_url
 )
 from server.models.users.merchants import Merchant
 from server.models.auths.api_auth import MerchantAPI
@@ -25,7 +26,7 @@ from server.applications.customers.schemas.webhooks.webhook_schema import (
 )
 from server.applications.customers.services.webhooks.webhook_service import (
     get_merchants_api_model,
-    get_merchant_signature,
+    get_client_signature,
     get_merchant,
     create_job_notification_header,
     create_job_notification_message,
@@ -46,11 +47,11 @@ customer_api_webhook_router = APIRouter('/customer/webhooks', tags=['Router for 
 """Route for the webhook for the completed job"""
 @customer_api_webhook_router.patch('/jobs')
 async def update_customer_job(merchant_api_model:Annotated[MerchantAPI, Depends(get_merchants_api_model)],
-                              merchant_signature:Annotated[str, Depends(get_merchant_signature)],
+                              merchant_signature:Annotated[str, Depends(get_client_signature)],
                               agent_completed_job:AgentCompletedJob,
                               session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
                               events_manager:Annotated[NotificationEvents, Depends(get_notifications_events)],
-                              WEBHOOK_URL:Annotated[str, Depends()],
+                              WEBHOOK_URL:Annotated[str, Depends(get_job_webhook_url)],
                               pine_server_key:Annotated[str, Depends(get_server_key)],
                               cache_db:Annotated[CacheDatabase, Depends(get_cache_db)],
                               http_client:Annotated[ClientSession, Depends(get_async_http)]):
@@ -179,6 +180,7 @@ async def update_customer_job(merchant_api_model:Annotated[MerchantAPI, Depends(
 
     #setting the event for notification
     noti_data_dict = {
+        'customer_id':str(agent_job.customer_id),
         'customer_noti': {
             'noti_id':str(customer_notification.id),
             'noti_header':customer_notification.notification_header,
