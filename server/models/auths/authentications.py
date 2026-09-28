@@ -20,7 +20,7 @@ class SessionAuthentication(Base):
     __tablename__ = 'session_authentication'
 
     #personal attributes 
-    id:Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    id:Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     name:Mapped[str] = mapped_column(String(length=100), nullable=False)
 
     #relationship attributes 

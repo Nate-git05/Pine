@@ -29,23 +29,17 @@ def get_returned_payments_lst(payments_lst:list[StripePayment], stripe_api_key:s
 
         #using stripe api to get customer data info
         try:
-            #getting customer payment method
-            stripe_payment_method = stripe.PaymentMethod.list(
+            # Retrieve the exact method represented by this saved Pine record.
+            stripe_payment_method = stripe.PaymentMethod.retrieve(
                 api_key=stripe_api_key,
-                customer=payment.stripe_customer_id,
-                type='card'
+                id=payment.stripe_payment_id
             )
-
-            #check if any data in the payment method
-            if not stripe_payment_method.data:
-                raise Exception('Unable to get the payment data for the customer from stripe')
-
-            #looping though the stripe methods 
-            for card_data in stripe_payment_method.data:
-                #updating pydantic model
-                returned_payment.payment_last4 = card_data.card.last4
-                returned_payment.payment_card_type = card_data.card.brand
-                returned_payment.expires_at = f"{card_data.card.exp_month:02d}/{card_data.card.exp_year}"
+            if stripe_payment_method.customer != payment.stripe_customer_id:
+                raise ValueError('Saved payment method does not belong to its Stripe customer.')
+            card_data = stripe_payment_method.card
+            returned_payment.payment_last4 = card_data.last4
+            returned_payment.payment_card_type = card_data.brand
+            returned_payment.expires_at = f"{card_data.exp_month:02d}/{card_data.exp_year}"
 
             returned_lst.append(returned_payment) #appending the payment to lst 
         except Exception as err:
@@ -54,7 +48,8 @@ def get_returned_payments_lst(payments_lst:list[StripePayment], stripe_api_key:s
     return returned_lst #returning the lst of pydantic payments 
 
 #helper function to pay for the job
-def customer_payment_for_job(cached_job:dict, customer_payment:StripePayment, stripe_api_key:str):
+def customer_payment_for_job(cached_job:dict, customer_payment:StripePayment, stripe_api_key:str,
+                             idempotency_key:str | None = None):
     #starting the stripe payment
     try:
         payment_intet = stripe.PaymentIntent.create(
@@ -64,7 +59,8 @@ def customer_payment_for_job(cached_job:dict, customer_payment:StripePayment, st
             customer=customer_payment.stripe_customer_id,
             payment_method=customer_payment.stripe_payment_id,
             confirm=True,
-            off_session=True
+            off_session=True,
+            idempotency_key=idempotency_key
         )
     except Exception as error:
         raise error

@@ -1,6 +1,6 @@
 #File for the helper/dependency functions for auth and routes
 import string 
-import random
+import secrets
 from fastapi.exceptions import HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.requests import Request
@@ -26,7 +26,7 @@ import json
 """Helper functions for the auth routes"""
 #function to generate user six digit code
 def generate_code(limit:int=6):
-    code = ''.join(random.choices(string.digits, k=limit))
+    code = ''.join(secrets.choice(string.digits) for _ in range(limit))
 
     return code #returns random six digit num
 
@@ -39,8 +39,8 @@ def send_message(twilio_client:Client, user_number:PhoneNumber,
             from_=pine_number,
             body=body
         )
-    except RuntimeError as error:
-        raise error
+    except Exception as error:
+        raise RuntimeError('Unable to send the verification message.') from error
 
 """Enum to define the state of the auth"""
 class AuthState(StrEnum):
@@ -141,123 +141,65 @@ async def get_current_customer(customer_token:Annotated[str, Depends(oauth2_sche
 
 #GraphQL routes 
 #context getter to validate database session with customer
-async def get_customer_context(request:Request) -> Customer:
-    #retriving the session database
+async def get_customer_context(
+    request:Request,
+    session_db:Annotated[AsyncSession, Depends(get_relational_db_session)]
+) -> dict:
+    """Authenticate GraphQL requests using the same token scheme as REST."""
     try:
-        session_db:AsyncSession = request.app.state.relational_database
-        PINE_SECRET_KEY:str = request.app.state.server_key
-    except Exception:
-        raise HTTPException(
-            status_code=500,
-            detail='Database error. Session handling gone wrong.'
-        )
+        request_data = await request.json()
+    except Exception as error:
+        raise HTTPException(status_code=400, detail='The request body is missing or invalid.') from error
 
-    #getting the data from the request 
+    authorization = request.headers.get('Authorization', '')
+    scheme, _, token_value = authorization.partition(' ')
+    if scheme.lower() != 'bearer' or not token_value.strip():
+        raise HTTPException(status_code=401, detail='Please sign in to continue.')
     try:
-        request_data:dict | None = await json.loads(request.json())
-        if not request_data:
-            raise HTTPException(
-                status_code=400,
-                detail='The request body is missing or invalid.'
-            )
-    except Exception:
-        raise HTTPException(
-            status_code=500,
-            detail='Unable to read the request body. Please try again.'
-        )
+        customer_token = UUID(token_value.strip())
+    except ValueError as error:
+        raise HTTPException(status_code=401, detail='Invalid session token.') from error
 
-    #getting token from request str -> uuid 
-    try:
-        customer_token_str:str = request.headers.get('Authorization').strip('Bearer')
-        customer_token = UUID(customer_token_str) #casting str token -> uuid
-    except Exception:
-        raise HTTPException(
-            status_code=404,
-            detail='Invalid request. Please sign back in.'
-        )
-
-    #hashing the customers token 
+    secret = request.app.state.server_key
     customer_token_hash = hmac.new(
-        PINE_SECRET_KEY,
-        customer_token.bytes,
-        digestmod=hashlib.sha256
+        secret.encode('utf-8'), customer_token.bytes, hashlib.sha256
     ).hexdigest().encode('utf-8')
-
-    #database query for the hash 
-    try:
-        session_query = await session_db.execute(select(SessionAuthentication).where(
-            SessionAuthentication.session_token == customer_token_hash
-        ))
-        customer_session = session_query.scalar_one_or_none() #gets the first hash found 
-    except Exception:
-        raise HTTPException(
-            status_code=500,
-            detail='Please sign back in.'
-        )
-
-    #check if token was successfully retrieved
+    session_query = await session_db.execute(select(SessionAuthentication).where(
+        SessionAuthentication.session_token == customer_token_hash
+    ))
+    customer_session = session_query.scalar_one_or_none()
     if not customer_session:
-        #invalid token -> customer signs back in
-        raise HTTPException(
-            status_code=404,
-            detail='Invalid token.'
-        )
-
-    #check if the session expired 
-    session_expired = datetime.now(timezone.utc) > customer_session.token_exp_time
-    if session_expired:
-        #updating session attributes 
-        try:
-            customer_session.expired_at = datetime.now(timezone.utc)
-            await session_db.commit()
-        except Exception:
-            await session_db.rollback() #rolling back any changes made
-            raise HTTPException(
-                status_code=500,
-                detail='Database error. Unable to confirm session. Please try again.'
-            )
-
-        #token expired -> customer signs back in
-        raise HTTPException(
-            status_code=404,
-            detail='Session expired. Please sign back in.'
-        )
-
-    #session did not expire -> validate token 
-    try:
-        customer_session.validated_at = datetime.now(timezone.utc)
+        raise HTTPException(status_code=401, detail='Invalid session token.')
+    now = datetime.now(timezone.utc)
+    if now >= customer_session.token_exp_time:
+        customer_session.expired_at = now
         await session_db.commit()
-    except Exception:
-        await session_db.rollback() 
-        raise HTTPException(
-            status_code=500,
-            detail='Database error. Please try again.'
-        )
+        raise HTTPException(status_code=401, detail='Session expired. Please sign in again.')
 
-    #database query for the customer
-    try:
-        customer_query = await session_db.execute(select(Customer).where(
-            Customer.id == customer_session.customer_id
-        ))
-        customer = customer_query.scalar_one_or_none() #gets the first customer found
-    except Exception:
-        raise HTTPException(
-            status_code=500,
-            detail='Database error. Please try again.'
-        )
-
-    #check if customer was successfully queried
+    customer_query = await session_db.execute(select(Customer).where(
+        Customer.id == customer_session.customer_id
+    ))
+    customer = customer_query.scalar_one_or_none()
     if not customer:
-        raise HTTPException(
-            status_code=404,
-            detail='Unable to locate customer. Please try signing back in.'
-        )
+        raise HTTPException(status_code=401, detail='Customer account was not found.')
+    customer_session.validated_at = now
+    await session_db.commit()
 
+    variables = request_data.get('variables') or {}
+    last_date = variables.get('last_date', request_data.get('last_date'))
+    if isinstance(last_date, str):
+        try:
+            last_date = datetime.fromisoformat(last_date.replace('Z', '+00:00'))
+        except ValueError:
+            last_date = None
     return {
-        'customer':customer,
-        'database_session':session_db,
-        'cursor':request_data.get('cursor'),
-        'last_date':request_data.get('last_date')
+        'customer': customer,
+        'database_session': session_db,
+        'cursor': variables.get('cursor', request_data.get('cursor')),
+        'last_date': last_date,
+        'last_made': last_date,
+        'last_active_job': last_date,
+        'last_id_seen': last_date,
     }
 
 #dependency function to retrive the validated customer

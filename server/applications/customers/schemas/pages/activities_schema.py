@@ -6,7 +6,6 @@ from pydantic import (
     model_validator
 )
 from datetime import datetime
-import re
 
 """Custom exception for the graphql routes"""
 #Strawberry defined Http exception
@@ -111,14 +110,11 @@ class CustomerRequestAnswer(BaseModel):
     @field_validator('customer_response')
     @classmethod
     def response_check(cls, response:str) -> str:
-        response.strip() #striping leading/ending whitespace 
+        response = response.strip()
         if not response:
             raise ValueError('Request response cannot be empty.')
-
-        #checking if the response has any spaces 
-        pattern = r''
-        if re.match(pattern, response):
-            raise ValueError('Request response cannot contain any spaces.')
+        if len(response) > 150:
+            raise ValueError('Request response cannot exceed 150 characters.')
 
         return response  #response returned 
 
@@ -132,8 +128,8 @@ class CustomerRequestAnswer(BaseModel):
 
 #Schema for the customer rating for job
 class CustomerJobRating(BaseModel):
-    job_rating:float = None 
+    job_rating:int = None
 
 #Schema for the response for the job rating 
 class RatingResponse(BaseModel):
-    response:str = None 
+    response:str = None

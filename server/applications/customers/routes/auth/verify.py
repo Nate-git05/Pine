@@ -96,6 +96,9 @@ async def customer_verify(customer_info:CustomerSMSVerify, customer_token:str,
             detail='Database error. Please try signing up again.'
         )
 
+    if customer_verification.verification_state != VerificationState.PENDING:
+        raise HTTPException(status_code=409, detail='This verification code has already been used.')
+
     #checking if the customer entered right code 
     if not customer_verification.check_code(customer_info.code):
         customer_verification.verification_attempts += 1 #incrementing verification attempts
@@ -155,6 +158,7 @@ async def customer_verify(customer_info:CustomerSMSVerify, customer_token:str,
                 status_code=500,
                 detail='Database error. Please try rentering the verification code.'
             )
+        raise HTTPException(status_code=400, detail='Incorrect verification code. Please try again.')
 
     #updating the verification attributes
     customer_verification.verification_state = VerificationState.ACCEPTED
@@ -171,38 +175,36 @@ async def customer_verify(customer_info:CustomerSMSVerify, customer_token:str,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc)
         )
+    else:
+        try:
+            customer_query = await session_db.execute(select(Customer).where(
+                Customer.phonenumber == customer_verification.phonenumber
+            ))
+            new_customer = customer_query.scalar_one_or_none()
+        except Exception as error:
+            raise HTTPException(status_code=500, detail='Unable to locate the customer account.') from error
+        if not new_customer:
+            raise HTTPException(status_code=404, detail='Unable to locate the customer account.')
 
-    #mapping created model -> postgres table
-    try:
-        session_db.add(new_customer)
-        await session_db.flush()
-        await session_db.commit()
-    except Exception:
-        await session_db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail='Database error. Please try again rentering the code.'
-        )
-
-    customer_session_token = uuid4() #generating customer session token
-    #hashing the customers token
+    customer_session_token = uuid4()
     token_hash = hmac.new(
         PINE_SEVER_SECRET_KEY.encode('utf-8'),
         customer_session_token.bytes,
         hashlib.sha256
     ).hexdigest().encode('utf-8')
 
-    #creating the customer's authentication row
-    customer_authentication = SessionAuthentication(
-        name=new_customer.name,
-        customer_id=new_customer.id,
-        session_token=token_hash,
-        token_exp_time=datetime.now(timezone.utc) + timedelta(days=60),
-        created_at=datetime.now(timezone.utc)
-    )
-
-    #mapping new row to Postgres 
+    # Save account/session and consume the verification in one transaction.
     try:
+        if customer_verification.auth_state == AuthState.SIGNUP:
+            session_db.add(new_customer)
+        await session_db.flush()
+        customer_authentication = SessionAuthentication(
+            name=new_customer.name,
+            customer_id=new_customer.id,
+            session_token=token_hash,
+            token_exp_time=datetime.now(timezone.utc) + timedelta(days=60),
+            created_at=datetime.now(timezone.utc)
+        )
         session_db.add(customer_authentication)
         await session_db.commit()
     except Exception:
@@ -212,10 +214,17 @@ async def customer_verify(customer_info:CustomerSMSVerify, customer_token:str,
             detail='Database error. Please try again rentering the code.'
         )
 
+    try:
+        await cache_db.delete(customer_token)
+        await cache_db.delete(str(customer_verification.id))
+    except RedisError:
+        # The verification is already accepted and the durable session exists.
+        pass
+
     #returning customer's session token 
     return CustomerSignupResponse(
-        customer_token=str(customer_token),
-        response=f'{new_customer.name}, congratulations! Your signup is successful.'
+        customer_token=str(customer_session_token),
+        response=f'{new_customer.name}, your {customer_verification.auth_state} is successful.'
     )
 
 """Route for the customer to request a new code"""

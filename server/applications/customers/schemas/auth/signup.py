@@ -30,7 +30,7 @@ class CustomerSignup(BaseModel):
 
         #checking contents of the name 
         pattern = r'^[A-Za-z\s\-]+$'
-        if re.match(pattern, name):
+        if not re.fullmatch(pattern, name):
             raise ValueError('The first name may not contain symbols, spaces, or numbers.')
 
         return name.title() #returns the name title cased 
@@ -48,7 +48,7 @@ class CustomerSignup(BaseModel):
 
         #checking contents of last name 
         pattern = r'^[A-Za-z\s\-]+$'
-        if re.match(pattern, name):
+        if not re.fullmatch(pattern, name):
             raise ValueError('The last name may not contain symbols, spaces, or numbers.')
 
         return name.title() #returns the name title cased 

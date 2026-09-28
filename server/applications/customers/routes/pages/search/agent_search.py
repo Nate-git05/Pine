@@ -97,11 +97,12 @@ async def customer_search_agent(customer_info:CustomerSearch,
 @customer_search_router.get('/agents/{agent_id_str}', response_model=AgentResponse)
 async def get_searched_agent(agent_id_str:str,
                              session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
+                             customer:Annotated[Customer, Depends(get_current_customer)],
                              ):
     #casting agent id to UUID
     try:
         agent_id = UUID(agent_id_str)
-    except Exception:
+    except ValueError:
         raise HTTPException(
             status_code=400,
             detail='Invalid id. Please try selecting the agent again.'
@@ -122,6 +123,8 @@ async def get_searched_agent(agent_id_str:str,
             Merchant.id == agent.merchant_id
         ))
         merchant = merchant_query.scalar_one_or_none()
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(
             status_code=500,

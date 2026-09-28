@@ -25,6 +25,7 @@ class ClientWebhook(BaseModel):
 
 #schema for the sse event
 class AgentJobYield(BaseModel):
+    offer_id:str
     agent_name:str
     agent_id:str
     job_name:str

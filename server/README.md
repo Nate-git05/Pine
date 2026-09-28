@@ -37,3 +37,14 @@ This branch contains a FastAPI customer backend under `server/`. The `client/` d
 The ASGI object is `server.app:app`. Startup requires the environment variables validated in `config/configuration.py` and reachable external services. Dependency pins are in `requirements.txt`.
 
 See the directory READMEs beside the edited code for focused handoff notes.
+
+## Additional fixes in the current working changes
+
+- Incoming job offers now receive a unique `offer_id`; the ID is included in the job-offer SSE event and is used by the payment route. The client should call `POST /customer/home/payment/{saved_payment_id}/{offer_id}` after card selection.
+- Stripe card setup reuses an existing Stripe Customer, builds valid return URLs from the request host, and saves the exact PaymentMethod returned by a successful SetupIntent. Saved card details are retrieved for that exact PaymentMethod.
+- PaymentIntent creation uses a stable idempotency key per offer and selected saved method. A short Redis lock serializes payment submissions for an offer; declined offers remain available, and successful offers are consumed after Pine records the job and payment.
+- Fixed SMS verification hash checking and incorrect-code fallthrough, login verification/customer lookup, session-token response, duplicate signup checks, and name-field validators.
+- Fixed the request-answer schema import and response validation; answered requests are marked handled only after the merchant endpoint accepts the answer. Customer job ratings now require a completed, unrated job.
+- Fixed GraphQL customer context authentication and several activity pagination/query errors.
+
+The Stripe charge, database writes, and merchant webhook are still separate systems without a reconciliation worker or durable outbox. A failure after charging may require recovery; idempotency prevents repeating the same Stripe operation but does not make the full workflow atomic. No external-service verification was performed for these changes.

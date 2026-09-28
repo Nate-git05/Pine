@@ -30,10 +30,10 @@ class CustomerRegistration(BaseModel):
 
         #checking the contents of the name
         pattern = r'^[A-Za-z\s\-]+$'
-        if re.match(pattern, name):
-            raise ValueError('The first name may not contain either a space, number, symbol.')
+        if not re.fullmatch(pattern, name):
+            raise ValueError('The first name may contain only letters, spaces, and hyphens.')
 
-        return name.title #returns the name capitalized
+        return name.title() #returns the name capitalized
 
     @field_validator('last_name')
     @classmethod
@@ -48,10 +48,10 @@ class CustomerRegistration(BaseModel):
 
         #checking the contents of the name
         pattern = r'^[A-Za-z\s\-]+$'
-        if re.match(pattern, name):
-            raise ValueError('The first name may not contain either a space, number, symbol.')
+        if not re.fullmatch(pattern, name):
+            raise ValueError('The last name may contain only letters, spaces, and hyphens.')
 
-        return name.title #returns the name capitalized 
+        return name.title() #returns the name capitalized
 
     #validating the schema model 
     @model_validator(mode='after')

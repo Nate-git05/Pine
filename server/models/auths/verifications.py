@@ -29,7 +29,7 @@ class SMSVerification(Base):
     __tablename__ = 'sms_verification' #name for table 
 
     #defining personal attributes of table 
-    id:Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    id:Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     name:Mapped[str] = mapped_column(String(length=100), nullable=False)
     phonenumber:PhoneNumber = mapped_column(String(length=15), nullable=False)
 
@@ -60,4 +60,4 @@ class SMSVerification(Base):
     def check_code(self, value:str) -> bool:
         value_encoded = value.encode('utf-8')
 
-        return bcrypt.checkpw(self.verification_code, value_encoded)
+        return bcrypt.checkpw(value_encoded, self.verification_code)

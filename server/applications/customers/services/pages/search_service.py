@@ -75,7 +75,7 @@ async def get_agents_rating(agent:Agent, session_db:AsyncSession) -> float:
         #getting the total rating throughout the job
         for job in agent_jobs:
             #checking if the job has a rating 
-            if job.job_rating:
+            if job.job_rating is not None:
                 agent_total_jobs += 1 #incrementing the jobs by one 
                 agent_total_rating += job.job_rating 
 

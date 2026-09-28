@@ -4,4 +4,6 @@
 
 This pass aligns pending-offer cache writes and reads, fixes signature and merchant API session handling, confirms that callback jobs belong to the signing merchant, and corrects request fields and notification IDs.
 
+Each incoming customer job offer now receives a Pine-generated `offer_id`. The SSE event includes that ID, and the customer payment endpoint is `POST /customer/home/payment/{payment_id}/{offer_id}`. The frontend should retain the offer ID from the SSE event and submit it with the chosen saved payment ID. Offers are cached independently for 15 minutes, so concurrent offers from the same agent do not collide.
+
 The incoming job and notification channels are separate, with events routed by customer ID. The queues are process-local and are not a cross-worker message broker. Verify webhook signatures, replay protection, and delivery retries before production.

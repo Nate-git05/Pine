@@ -61,7 +61,7 @@ async def get_customer_job(job_id_str:str,
         job_id=str(job.id),
         job_name=job.job_name,
         job_description=job.job_description,
-        job_price=job.job_price,
+        job_price=(job.job_price / 100),
         job_summary=job.job_summary,
         hired_agent_id=str(job.hired_agent_id),
         hired_agent_name=job.hired_agent_name,
@@ -105,6 +105,11 @@ async def post_customer_job_rating(job_id_str:str,
             status_code=400,
             detail='Unable to locate the job. Please try entering the rating again.'
         )
+
+    if agent_job.job_state != AgentJobState.DONE:
+        raise HTTPException(status_code=409, detail='Only completed jobs can be rated.')
+    if agent_job.job_rating is not None:
+        raise HTTPException(status_code=409, detail='This job has already been rated.')
 
     #updating the SQL model 
     try:

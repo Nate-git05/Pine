@@ -23,7 +23,7 @@ from server.applications.customers.services.auth.auth_service import (
     send_message,
     AuthState
 )
-from sqlalchemy import select, and_
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic_extra_types.phone_numbers import PhoneNumber
 from typing import Annotated
@@ -44,7 +44,7 @@ async def customer_signup(customer_info:CustomerSignup,
                           pine_number:Annotated[PhoneNumber, Depends(get_servers_number)]):
     #database query to see if account exists under the same phonenumber
     try:
-        customer_query = await session_db.execute(select(Customer).where(and_(
+        customer_query = await session_db.execute(select(Customer).where(or_(
             Customer.email == customer_info.email,
             Customer.phonenumber == customer_info.phonenumber
         )))

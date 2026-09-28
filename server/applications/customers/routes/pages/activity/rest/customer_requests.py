@@ -8,10 +8,10 @@ from server.app import (
     get_async_http
 )
 from server.models.users.customers import Customer
-from server.models.activities.jobs.job_request import AgentJobRequest
+from server.models.activities.jobs.job_request import AgentJobRequest, JobRequestState
 from server.applications.customers.schemas.pages.activities_schema import (
     IndividualJobRequest,
-    CustoemrResquestAnswer
+    CustomerRequestAnswer
 )
 from server.applications.customers.services.pages.activity_service import (
     get_agent_url,
@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from typing import Annotated
 from uuid import UUID
+from datetime import datetime, timezone
 from aiohttp import ClientSession, ClientError
 import json
 
@@ -76,7 +77,7 @@ async def get_customer_job_request(request_id_str:str,
 """Route for customer to answer the request"""
 @customer_activity_router.post('/request/answer/{request_id_str}')
 async def customer_answer_requst(request_id_str:str,
-                                 customer_info:CustoemrResquestAnswer,
+                                 customer_info:CustomerRequestAnswer,
                                  session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
                                  customer:Annotated[Customer, Depends(get_current_customer)],
                                  http_client:Annotated[ClientSession, Depends(get_async_http)]):
@@ -108,16 +109,8 @@ async def customer_answer_requst(request_id_str:str,
             status_code=400,
             detail='Unable to locate the request. Please try again.'
         )
-
-    #updating the model with the response 
-    try:
-        customer_request.customer_request_response = customer_info.customer_response
-        await session_db.commit()
-    except Exception:
-        await session_db.rollback()
-        raise HTTPException(
-            status_code='Database error. Please try entering the response again.'
-        )
+    if customer_request.job_request_state == JobRequestState.HANDLED:
+        raise HTTPException(status_code=409, detail='This request has already been answered.')
 
     #getting the hired agent info -> getting the hired agent info for request 
     try:
@@ -135,7 +128,7 @@ async def customer_answer_requst(request_id_str:str,
             'request_name':customer_request.request_name,
             'request_description':customer_request.request_description,
             'job_summary':customer_request.job_summary,
-            'customer_response':customer_request.customer_request_response
+            'customer_response':customer_info.customer_response
 
         }
     , separators=(',', ':'))
@@ -157,7 +150,10 @@ async def customer_answer_requst(request_id_str:str,
             #ensuring response was successful
             if (agent_server_response.status < 200) or (agent_server_response.status >= 300):
                 raise Exception('Status for request was bad.')
-
+            customer_request.customer_request_response = customer_info.customer_response
+            customer_request.job_request_state = JobRequestState.HANDLED
+            customer_request.handled_at = datetime.now(timezone.utc)
+            await session_db.commit()
             return 
     except ClientError as err:
         raise HTTPException(

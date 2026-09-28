@@ -21,6 +21,7 @@ import json
 from redis.asyncio import RedisError
 import hmac
 import hashlib
+from uuid import uuid4
 
 """Route gets requests from agent/job/integrations webhook to send job over to client"""
 @customer_api_webhook_router.post('/client')
@@ -46,12 +47,16 @@ async def send_cached_job(client_signature:Annotated[str, Header(alias='Signatur
             detail='Invalid signature. Request failed.'
         )
 
-    #storing the request in the cache 
-    cache_key = f'{str(customer_info.customer_id)}/{customer_info.agent_name}'
+    # Give each offer its own identity so simultaneous offers from one agent
+    # cannot overwrite or consume each other.
+    offer_id = str(uuid4())
+    cached_offer = customer_info.model_dump(mode='json')
+    cached_offer['offer_id'] = offer_id
+    cache_key = f'pending-job/{customer_info.customer_id}/{offer_id}'
     try:
-        await cache_db.insert_list(
+        await cache_db.insert(
             key=cache_key,
-            value=customer_info.model_dump_json(),
+            value=json.dumps(cached_offer, separators=(',', ':')),
             exp_time=900
         )
     except RedisError:
@@ -65,7 +70,10 @@ async def send_cached_job(client_signature:Annotated[str, Header(alias='Signatur
         await server_events.event_set(
             data={
                 'customer_id':str(customer_info.customer_id),
-                'customer_data':customer_info.model_dump(mode='json')
+                'customer_data':{
+                    **customer_info.model_dump(mode='json'),
+                    'offer_id':offer_id
+                }
             }
         )
     except Exception:
@@ -85,6 +93,7 @@ async def stream_customer_job(customer:Annotated[Customer, Depends(get_current_c
             event_data = await server_events.get_item(customer_id)
             customer_data = event_data.get('customer_data') or {}
             yield AgentJobYield(
+                offer_id=customer_data.get('offer_id'),
                 agent_name=customer_data.get('agent_name'),
                 agent_id=customer_data.get('agent_id'),
                 job_name=customer_data.get('job_name'),

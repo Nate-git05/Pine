@@ -70,6 +70,20 @@ class CacheDatabase:
         except RedisError as error:
             raise error
 
+    async def acquire_lock(self, key:str, token:str, exp_time:int=120) -> bool:
+        try:
+            return bool(await self.redis_db.set(key, token, ex=exp_time, nx=True))
+        except RedisError as error:
+            raise error
+
+    async def release_lock(self, key:str, token:str):
+        # Only the request that acquired the lock may release it.
+        script = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end"
+        try:
+            await self.redis_db.eval(script, 1, key, token)
+        except RedisError as error:
+            raise error
+
     #redis list insert 
     async def insert_list(self, key:str, value:str, exp_time:int=600):
         try:
