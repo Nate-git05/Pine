@@ -54,65 +54,73 @@ class APIWrapper:
 #Wrappper for the server notification events 
 class NotificationEvents:
     def __init__(self):
-        self.notification_event = Event() #event obj for 
-        self.async_queue = Queue()
+        self.events:dict[str, Event] = {}
+        self.queues:dict[str, Queue] = {}
+
+    def _get_channel(self, customer_id:str) -> tuple[Event, Queue]:
+        if customer_id not in self.events:
+            self.events[customer_id] = Event()
+            self.queues[customer_id] = Queue()
+        return self.events[customer_id], self.queues[customer_id]
 
     #method flips event to wait 
-    async def event_wait(self):
-        await self.notification_event.wait() #holds the event -> waits to be flipped 
+    async def event_wait(self, customer_id:str):
+        event, _ = self._get_channel(customer_id)
+        await event.wait()
 
     #method to flip event to set 
     async def event_set(self, data:dict):
-        #appending data to the async queue
+        customer_id = data.get('customer_id')
+        if not customer_id:
+            raise ValueError('Notification events require a customer_id.')
+        event, queue = self._get_channel(str(customer_id))
         try:
-            await self.async_queue.put(data) #signifies to the event the data 
-            await self.notification_event.set() #starts the event
+            await queue.put(data)
+            event.set()
         except Exception as error:
             raise error 
 
     #delete from queue 
-    async def get_item(self):
-        if self.async_queue.empty():
-            return None 
-
-        #else
-        try:
-            item = await self.async_queue.get()
-            if self.async_queue.empty():
-                self.notification_event.clear()
-            return item #returning item in queue
-        except Exception as error:
-            raise error
+    async def get_item(self, customer_id:str):
+        event, queue = self._get_channel(customer_id)
+        item = await queue.get()
+        if queue.empty():
+            event.clear()
+        return item
 
 #Wrapper for the Incoming job events
 class IncomingJobsEvents:
     def __init__(self):
-        self.jobs_event = Event()
-        self.async_queue = Queue()
+        self.events:dict[str, Event] = {}
+        self.queues:dict[str, Queue] = {}
+
+    def _get_channel(self, customer_id:str) -> tuple[Event, Queue]:
+        if customer_id not in self.events:
+            self.events[customer_id] = Event()
+            self.queues[customer_id] = Queue()
+        return self.events[customer_id], self.queues[customer_id]
 
     #method flips event to wait 
-    async def event_wait(self):
-        await self.jobs_event.wait() #holds the event -> waits to be flipped 
+    async def event_wait(self, customer_id:str):
+        event, _ = self._get_channel(customer_id)
+        await event.wait()
 
     #method to flip event to set 
     async def event_set(self, data:dict):
-        #appending data to the async queue
+        customer_id = data.get('customer_id')
+        if not customer_id:
+            raise ValueError('Incoming job events require a customer_id.')
+        event, queue = self._get_channel(str(customer_id))
         try:
-            await self.async_queue.put(data) #signifies to the event the data 
-            await self.jobs_event.set() #starts the event
+            await queue.put(data)
+            event.set()
         except Exception as error:
             raise error 
 
     #delete from queue 
-    async def get_item(self):
-        if self.async_queue.empty():
-            return None 
-
-        #else
-        try:
-            item = await self.async_queue.get()
-            if self.async_queue.empty():
-                self.jobs_event.clear()
-            return item #returning item in queue
-        except Exception as error:
-            raise error
+    async def get_item(self, customer_id:str):
+        event, queue = self._get_channel(customer_id)
+        item = await queue.get()
+        if queue.empty():
+            event.clear()
+        return item

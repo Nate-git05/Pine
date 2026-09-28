@@ -31,6 +31,7 @@ from server.applications.customers.services.webhooks.webhook_service import (
     create_job_notification_header,
     create_job_notification_message,
     send_cached_job,
+    ensure_merchant_owns_job,
     NotificationMessageType
 )
 from server.config.apis import NotificationEvents
@@ -42,7 +43,7 @@ from typing import Annotated
 from datetime import datetime, timezone
 from uuid import UUID
 
-customer_api_webhook_router = APIRouter('/customer/webhooks', tags=['Router for the apis webhooks'])
+customer_api_webhook_router = APIRouter(prefix='/customer/webhooks', tags=['Router for the apis webhooks'])
 
 """Route for the webhook for the completed job"""
 @customer_api_webhook_router.patch('/jobs')
@@ -93,10 +94,21 @@ async def update_customer_job(merchant_api_model:Annotated[MerchantAPI, Depends(
             detail='Unable to locate the job from passed id.'
         )
 
-    #updating attributes of the model 
+    try:
+        await ensure_merchant_owns_job(session_db, merchant_api_model, agent_job)
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail='Unable to confirm job ownership.') from error
+
+    if agent_job.job_state == AgentJobState.DONE:
+        raise HTTPException(status_code=409, detail='This job has already been marked complete.')
+
+    #updating attributes of the model
     try:
         agent_job.job_state = AgentJobState.DONE
         agent_job.job_summary = agent_completed_job.job_action_summary
+        agent_job.completed_at = datetime.now(timezone.utc)
         await session_db.commit()
     except Exception:
         await session_db.rollback()
@@ -126,12 +138,11 @@ async def update_customer_job(merchant_api_model:Annotated[MerchantAPI, Depends(
     merchant_notification_header = create_job_notification_header(agent_name=agent_job.hired_agent_name)
     merchant_notification_message = create_job_notification_message(
         agent_job.hired_agent_name,
-        job_name=None,
-        job_summary=None,
+        job_name=agent_job.job_name,
         message_type=NotificationMessageType.MERCHANT
     )
     try:
-        merchant:Merchant = get_merchant(
+        merchant:Merchant = await get_merchant(
             session_db=session_db,
             merchant_api_model=merchant_api_model
         )
@@ -197,4 +208,4 @@ async def update_customer_job(merchant_api_model:Annotated[MerchantAPI, Depends(
             detail='Unable to set the event for the customer notification made.'
         )
 
-    return 
+    return

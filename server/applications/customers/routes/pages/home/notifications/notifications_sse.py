@@ -9,7 +9,6 @@ from server.applications.customers.schemas.pages.notification_schemas import SSE
 from server.models.users.customers import Customer
 from server.config.apis import NotificationEvents
 from typing import Annotated
-import json
 
 #global router for customer noti server side events
 customer_sse_router = APIRouter(prefix='/customer/notifications', tags=['Route for server side events'])
@@ -20,16 +19,14 @@ async def send_notification_event(customer:Annotated[Customer, Depends(get_curre
                                   events_manager:Annotated[NotificationEvents, Depends(get_notifications_events)]):
     async def stream_notifications():
         while True:
-            await events_manager.event_wait()
-            while not events_manager.async_queue.empty():
-                notification_data = await events_manager.get_item()
-                if not notification_data or notification_data.get('customer_id') != str(customer.id):
-                    continue
-                customer_notification = notification_data.get('customer_noti') or {}
-                yield SSENotificationResponse(
-                    notification_id=customer_notification.get('noti_id'),
-                    notification_header=customer_notification.get('noti_header'),
-                    notification_message=customer_notification.get('noti_message')
-                )
+            customer_id = str(customer.id)
+            await events_manager.event_wait(customer_id)
+            notification_data = await events_manager.get_item(customer_id)
+            customer_notification = notification_data.get('customer_noti') or {}
+            yield SSENotificationResponse(
+                notification_id=customer_notification.get('noti_id'),
+                notification_header=customer_notification.get('noti_header'),
+                notification_message=customer_notification.get('noti_message')
+            )
 
     return EventSourceResponse(stream_notifications())

@@ -20,7 +20,7 @@ This branch contains a FastAPI customer backend under `server/`. The `client/` d
 - Registered the customer auth, home/payment, search, activity REST and GraphQL, SSE, and webhook routers with FastAPI.
 - Fixed search request embedding input, cursor handling, async helper calls, route declaration, agent description lookup, and rating calculation when no jobs have ratings.
 - Fixed activity helper mistakes, job/customer relationship keys, and UUID generation defaults. Stripe payment setup now uses Checkout setup mode and looks up the saved payment method from the SetupIntent.
-- Fixed client/notification SSE queue consumption and event signaling, and corrected client webhook signature encoding and event payload construction.
+- Kept incoming job offers and customer notifications on separate event channels, with customer keyed queues within each channel. Aligned pending-offer Redis list writes/reads and fixed merchant callback authentication, ownership checks, request fields, and signatures.
 - Added readable details for a number of customer errors and corrected several payment and activity response fields.
 
 ## Current caveats for the next agent
@@ -29,7 +29,7 @@ This branch contains a FastAPI customer backend under `server/`. The `client/` d
 - Changing `Customer.__tablename__` to `customers` aligns it with the foreign keys declared throughout these models. Confirm the deployed database table name and apply a migration if it currently uses `customer`.
 - Existing model/schema mismatches and incomplete flows remain outside this pass. Review merchant registration and routes, profile/notification GraphQL wiring, payment idempotency and refunds, webhook authentication, and Stripe return URL configuration before production use.
 - Profile REST and notification REST/GraphQL modules are empty or incomplete in this checkout. The profile GraphQL module is also unfinished. Do not assume those surfaces are available because the related folders exist.
-- Event queues are in process memory. Multiple server workers or instances will not share events, and an SSE consumer may drain another customer's queued event. Move event fanout to Redis pub/sub or another shared broker before relying on this across workers.
+- Event queues are in process memory. Multiple server workers or instances will not share events. Move event fanout to Redis pub/sub or another shared broker before relying on this across workers.
 - Inspect `git diff` before committing, and do not expose `server/.env` values in logs or docs.
 
 ## Local entry point

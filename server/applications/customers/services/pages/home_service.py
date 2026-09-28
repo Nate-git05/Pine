@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 import stripe
 from datetime import datetime, timezone
+from uuid import UUID
 
 #Helper function -> loops through payments lst creates -> stores pydantic model
 def get_returned_payments_lst(payments_lst:list[StripePayment], stripe_api_key:str):
@@ -76,8 +77,9 @@ async def create_agents_new_job(session_db:AsyncSession,
                                 cached_job:dict):
     try:
         hired_agent_query = await session_db.execute(select(HiredAgent).where(and_(
-            HiredAgent.id == cached_job.get('agent_id'),
-            HiredAgent.customer_id == customer.id
+            HiredAgent.agent_id == UUID(cached_job.get('agent_id')),
+        HiredAgent.customer_id == customer.id,
+        HiredAgent.agent_state == 'active'
         )))
         hired_agent = hired_agent_query.scalar_one_or_none() #getting the agent from customer id and the agents id
     except Exception as err:

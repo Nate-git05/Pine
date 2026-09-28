@@ -20,8 +20,9 @@ from server.models.activities.jobs.job_request import (
 from server.config.apis import NotificationEvents
 from server.applications.customers.schemas.webhooks.webhook_schema import JobRequestWebhook
 from server.applications.customers.services.webhooks.webhook_service import (
-    get_merchant_signature,
+    get_client_signature as get_merchant_signature,
     get_merchants_api_model,
+    ensure_merchant_owns_job,
     get_request_job,
     create_request_notification_header,
     create_request_notification_message
@@ -53,11 +54,22 @@ async def create_cusotmer_job_request(merchant_api_model:Annotated[MerchantAPI, 
             session_db=session_db,
             job_id_str=agent_request.job_id
         )
+    except ValueError:
+        raise HTTPException(status_code=400, detail='The job id in this request is invalid.')
     except Exception:
         raise HTTPException(
             status_code=500,
             detail='Database error. Unable to operate on the database.'
         )
+
+    try:
+        await ensure_merchant_owns_job(session_db, merchant_api_model, agent_job)
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail='Unable to confirm job ownership.') from error
+    if agent_job.job_state != 'active':
+        raise HTTPException(status_code=409, detail='Requests can only be created for an active job.')
 
     #creating new job request model 
     new_job_request = AgentJobRequest(
@@ -68,7 +80,7 @@ async def create_cusotmer_job_request(merchant_api_model:Annotated[MerchantAPI, 
         hired_agent_id=agent_job.hired_agent_id,
         agent_job_id=agent_job.id,
         customer_id=agent_job.customer_id,
-        agent_hired_name=agent_job.hired_agent_name,
+        hired_agent_name=agent_job.hired_agent_name,
         request_made_at=datetime.now(timezone.utc)
     )
 
@@ -105,7 +117,7 @@ async def create_cusotmer_job_request(merchant_api_model:Annotated[MerchantAPI, 
     notification_data = {
         'customer_id':str(customer_notification.customer_id),
         'customer_noti':{
-            'noti_id':str(customer_notification),
+            'noti_id':str(customer_notification.id),
             'noti_header':customer_notification.notification_header,
             'noti_message':customer_notification.notification_message
         }

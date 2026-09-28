@@ -1,12 +1,17 @@
 #Service file for the helper functions in webhook routes
 from fastapi.requests import Request
+from fastapi import Depends
 from fastapi.exceptions import HTTPException
+from typing import Annotated
+from server.app import get_relational_db_session
 from server.models.auths.api_auth import MerchantAPI
 from server.models.users.merchants import Merchant
 from server.models.activities.jobs.agent_job import AgentJob
+from server.models.agents.hired_agent import HiredAgent
+from server.models.agents.agent import Agent
 from server.config.database import CacheDatabase
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from aiohttp import ClientSession
 from enum import StrEnum
 from uuid import UUID
@@ -15,30 +20,24 @@ import hashlib
 
 """Dependency function to retrieve the merchants api key"""
 #dependency function auht the merchant with api key 
-async def get_merchants_api_model(request:Request):
-    #getting the database session 
-    try:
-        database_session:AsyncSession = request.app.state.relational_database 
-    except Exception:
-        raise HTTPException(
-            status_code=500,
-            detail='Unable to retrieve application info.'
-        )
-
+async def get_merchants_api_model(
+    request:Request,
+    session_db:Annotated[AsyncSession, Depends(get_relational_db_session)]
+):
     #getting the api key from the request
     try:
         merchant_api_key_str = request.headers.get('Api-Key')
         #check if there is a api key
-        if not merchant_api_key:
+        if not merchant_api_key_str:
             raise HTTPException(
-                status_code=400,
+                status_code=401,
                 detail='Unable to locate the api key in request.'
             )
         
-        merchant_api_key = UUID(merchant_api_key_str) #casting api key str -> uuid 
+        merchant_api_key = UUID(merchant_api_key_str) #casting api key str -> uuid
 
         #database query for the merchant
-        merchant_api_query = await database_session.execute(select(MerchantAPI).where(
+        merchant_api_query = await session_db.execute(select(MerchantAPI).where(
             MerchantAPI.api_key == merchant_api_key
         ))
         merchant_api_model = merchant_api_query.scalar_one_or_none() #gets the first api model found
@@ -46,24 +45,28 @@ async def get_merchants_api_model(request:Request):
         #check if model was queired 
         if not merchant_api_model:
             raise HTTPException(
-                status_code=400,
+                status_code=401,
                 detail='Unable to validate api key.'
             )
 
         #returning the merchant api model to route
         return merchant_api_model
-    except Exception:
+    except HTTPException:
+        raise
+    except ValueError as error:
+        raise HTTPException(status_code=401, detail='The merchant API key is invalid.') from error
+    except Exception as error:
         raise HTTPException(
             status_code=500,
-            detail='Database error. Request failed.'
-        )
+            detail='Unable to validate the merchant API key.'
+        ) from error
 
 #dependency function to get the signature of the request
 def get_client_signature(request:Request):
     signature = request.headers.get('Signature')
     if not signature:
         raise HTTPException(
-            status_code=400,
+            status_code=401,
             detail='Unable to locate the signature in the request.'
         )
 
@@ -85,6 +88,25 @@ async def get_merchant(session_db:AsyncSession, merchant_api_model:MerchantAPI):
         raise Exception('Unable to locate the merchant SQL model.')
 
     return merchant #returning found merchant
+
+async def ensure_merchant_owns_job(
+    session_db:AsyncSession,
+    merchant_api_model:MerchantAPI,
+    agent_job:AgentJob
+) -> None:
+    hired_agent_query = await session_db.execute(select(HiredAgent).where(
+        HiredAgent.id == agent_job.hired_agent_id
+    ))
+    hired_agent = hired_agent_query.scalar_one_or_none()
+    if not hired_agent:
+        raise HTTPException(status_code=404, detail='The hired agent for this job was not found.')
+
+    agent_query = await session_db.execute(select(Agent).where(and_(
+        Agent.id == hired_agent.agent_id,
+        Agent.merchant_id == merchant_api_model.merchant_id
+    )))
+    if not agent_query.scalar_one_or_none():
+        raise HTTPException(status_code=403, detail='This API key cannot update a job owned by another merchant.')
 
 """Enum for denoting who the message is for"""
 class NotificationMessageType(StrEnum):
@@ -158,7 +180,7 @@ async def send_cached_job(cache_key:str,
     pine_signature = hmac.new(
         key=pine_server_key.encode('utf-8'),
         msg=cache_value.encode('utf-8'),
-        digestmod=hashlib.sha256()
+        digestmod=hashlib.sha256
     ).hexdigest()
     headers = {
         'Content-type':'application/json',

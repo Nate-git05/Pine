@@ -140,7 +140,7 @@ async def customer_answer_requst(request_id_str:str,
         }
     , separators=(',', ':'))
     try:
-        merchant_api_signature = get_merchant_signature(session_db, customer_request, data=data)
+        merchant_api_signature = await get_merchant_signature(session_db, customer_request, data=data)
     except Exception:
         raise HTTPException(
             status_code=500,

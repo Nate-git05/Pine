@@ -40,7 +40,7 @@ class MerchantAPI(Base):
             msg=encoded_data,
             digestmod=hashlib.sha256
         )
-        return signature #returning signature 
+        return signature.hexdigest() #returning the encoded signature
 
     #method to check the hash to confirm 
     def check_signature(self, data:str, api_signature:str) -> bool:
@@ -56,5 +56,5 @@ class MerchantAPI(Base):
         #returning the bool sig
         return hmac.compare_digest(
             api_signature,
-            signature
-        )       
+            signature.hexdigest()
+        )

@@ -148,6 +148,25 @@ async def customer_job_payment(payment_id_str:str,
 
     cached_job_dict = json.loads(cached_job) #loads in the cached job str as dict
 
+    #Validate the offer and customer-agent relationship before charging the card.
+    try:
+        offered_agent_id = UUID(cached_job_dict.get('agent_id'))
+        offered_price = cached_job_dict.get('job_price')
+        if not isinstance(offered_price, int) or offered_price <= 0:
+            raise ValueError('The offer price must be a positive amount in cents.')
+        hired_agent_query = await session_db.execute(select(HiredAgent).where(and_(
+            HiredAgent.agent_id == offered_agent_id,
+            HiredAgent.customer_id == customer.id,
+            HiredAgent.agent_state == 'active'
+        )))
+        if not hired_agent_query.scalar_one_or_none():
+            raise ValueError('This offer is not from an active agent hired by this customer.')
+    except Exception as error:
+        raise HTTPException(
+            status_code=400,
+            detail='This job offer is invalid or is not from an active hired agent.'
+        ) from error
+
     #calling stripe api for payments 
     try:
         payment_success = customer_payment_for_job(
@@ -197,7 +216,7 @@ async def customer_job_payment(payment_id_str:str,
     pine_siganture = hmac.new(
         pine_server_key.encode('utf-8'),
         agent_job_model.model_dump_json().encode('utf-8'),
-        digestmod=hashlib.sha256()
+        digestmod=hashlib.sha256
     )
 
     #building out params for request
@@ -209,8 +228,9 @@ async def customer_job_payment(payment_id_str:str,
     #getting the agents url for request
     try:
         hired_agent_query = await session_db.execute(select(HiredAgent).where(and_(
-            HiredAgent.id == cached_job_dict.get('agent_id'),
-            HiredAgent.customer_id == customer.id
+            HiredAgent.id == agent_job.hired_agent_id,
+            HiredAgent.customer_id == customer.id,
+            HiredAgent.agent_state == 'active'
         )))
         hired_agent = hired_agent_query.scalar_one_or_none()
         if not hired_agent:
