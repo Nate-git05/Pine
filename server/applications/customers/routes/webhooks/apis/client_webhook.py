@@ -1,6 +1,7 @@
 #File for the webhook thats communicates directly to the client 
 from fastapi.exceptions import HTTPException
 from fastapi import Depends
+from fastapi.sse import EventSourceResponse
 from server.applications.customers.routes.webhooks.apis.job_webhook import customer_api_webhook_router
 from server.applications.customers.services.auth.auth_service import get_current_customer
 from server.app import (
@@ -32,13 +33,13 @@ async def send_cached_job(client_signature:Annotated[str, Depends()],
     #getting the signature 
     signature = hmac.new(
         pine_server_key.encode('utf-8'),
-        customer_info.model_dump_json(),
-        digestmod=hashlib.sha256()
+        customer_info.model_dump_json().encode('utf-8'),
+        digestmod=hashlib.sha256
     )
 
     #checking the client signature 
     if not hmac.compare_digest(
-        signature,
+        signature.hexdigest(),
         client_signature
     ):
         raise HTTPException(
@@ -62,53 +63,34 @@ async def send_cached_job(client_signature:Annotated[str, Depends()],
     #setting the event to set for the customer cached job 
     try:
         await server_events.event_set(
-            data=json.loads({
+            data={
                 'customer_id':str(customer_info.customer_id),
-                'customer_data':customer_info.model_dump_json()
-            })
+                'customer_data':customer_info.model_dump(mode='json')
+            }
         )
     except Exception:
         raise HTTPException(
             status_code=500,
-            detail=''
+            detail='Unable to authenticate this client webhook request.'
         )
 
 """Route for a server side event -> yields job created"""
 @customer_api_webhook_router.get('/client/event')
 async def stream_customer_job(customer:Annotated[Customer, Depends(get_current_customer)],
                               server_events:Annotated[IncomingJobsEvents, Depends(get_jobs_events)]):
-    async def get_customer_job() -> dict:
-        while not server_events.async_queue:
-            server_events.event_wait()
+    async def stream_jobs():
+        while True:
+            await server_events.event_wait()
+            while not server_events.async_queue.empty():
+                event_data = await server_events.get_item()
+                if not event_data or event_data.get('customer_id') != str(customer.id):
+                    continue
+                customer_data = event_data.get('customer_data') or {}
+                yield AgentJobYield(
+                    agent_name=customer_data.get('agent_name'),
+                    job_name=customer_data.get('job_name'),
+                    job_description_str=customer_data.get('job_description'),
+                    job_price=(customer_data.get('job_price') / 100)
+                )
 
-        try:
-            for data in server_events.async_queue:
-                if data.get('customer_id') == str(customer.id):
-                    customer_data:dict = json.loads(data)
-                    break
-
-            return customer_data #returning the customer data 
-        except Exception as err:
-            raise err
-
-    #getting the customer data from inner fucntion
-    try:
-        server_data:dict = await get_customer_job()
-        customer_data:dict = server_data.get('customer_data')
-    except Exception:
-        raise HTTPException(
-            status_code=400,
-            detail='Unable to locate job for the customer.'
-        )
-    
-    #pydantic model for cached job 
-    cached_job = AgentJobYield(
-        agent_name=customer_data.get('agent_name'),
-        agent_id=customer_data.get('agent_id'),
-        job_name=customer_data.get('job_name'),
-        job_description_str=customer_data.get('job_description'),
-        job_price=(customer_data.get('job_price') / 100)
-    )
-
-    #yielding to the client
-    yield cached_job
+    return EventSourceResponse(stream_jobs())

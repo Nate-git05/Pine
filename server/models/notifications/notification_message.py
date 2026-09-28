@@ -12,7 +12,7 @@ from sqlalchemy.orm import (
 )
 from datetime import datetime
 from enum import StrEnum
-from uuid import UUID
+from uuid import UUID, uuid4
 
 """Enum for the type of the notification message"""
 class NotificationType(StrEnum):
@@ -32,12 +32,12 @@ class Notification(Base):
     __tablename__ = 'notifications' #name of the table in Postgres
 
     #personal attributes of the notification model
-    id:Mapped[UUID] = mapped_column(Uuid, primary_key=True) #unique identifier 
+    id:Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4) #unique identifier
     notification_header:Mapped[str] = mapped_column(String(length=50), nullable=False)
     notification_message:Mapped[str] = mapped_column(String(length=150), nullable=False)
 
     #state and type attributes of the notification
-    notification_type:NotificationState = mapped_column(String(length=15), nullable=False)
+    notification_type:NotificationType = mapped_column(String(length=15), nullable=False)
     notification_state:NotificationState = mapped_column(String(length=15), nullable=False)
 
     #relationship attributes 

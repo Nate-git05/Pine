@@ -21,7 +21,7 @@ async def retrieve_queryied_agents(payload_lst:list[dict]):
             agent_id=payload.get('agent_id'),
             agent_price=(payload.get('agent_price') / 100),
             agent_name=payload.get('agent_name'),
-            agent_description=payload.get('agent_desciption')
+            agent_description=payload.get('agent_description')
         )
 
         returned_agents_lst.append(agent_returned) #appending the agent to lst
@@ -79,5 +79,5 @@ async def get_agents_rating(agent:Agent, session_db:AsyncSession) -> float:
                 agent_total_jobs += 1 #incrementing the jobs by one 
                 agent_total_rating += job.job_rating 
 
-    agent_rating = (agent_total_rating/agent_total_jobs) #total rating from completed jobs 
+    agent_rating = (agent_total_rating / agent_total_jobs) if agent_total_jobs else 0.0
     return agent_rating

@@ -36,7 +36,7 @@ from uuid import UUID
 customer_search_router = APIRouter(prefix='/customer/search', tags=['Routes for the search navigation page.'])
 
 """Route for the customer to search for an agent"""
-@customer_search_router.post('/agents?={limit}', response_model=AgentReturnedList)
+@customer_search_router.post('/agents', response_model=AgentReturnedList)
 async def customer_search_agent(customer_info:CustomerSearch,
                                 vector_db:Annotated[VectorDatabase, Depends(get_vector_database)],
                                 openai_client:Annotated[AsyncClient, Depends(get_openai_client)],
@@ -46,7 +46,7 @@ async def customer_search_agent(customer_info:CustomerSearch,
     #vector database query ->
     try:
         #embedding the customer's query
-        embedded_query = await vector_db.create_vector_embedding(openai_client, customer_info)
+        embedded_query = await vector_db.create_vector_embedding(openai_client, customer_info.search_request)
 
         #check if cursor for the query exists -> if exist filter out ids 
         if customer_info.agent_ids_seen:
@@ -54,7 +54,7 @@ async def customer_search_agent(customer_info:CustomerSearch,
                 embeddings=embedded_query,
                 limit=limit,
                 collection_type=CollectionType.AGENT,
-                excluded_ids=agent_ids_seen
+                excluded_ids=customer_info.agent_ids_seen
             )
         else:
             database_query = await vector_db.retrieve(
@@ -75,11 +75,11 @@ async def customer_search_agent(customer_info:CustomerSearch,
         #appending list of seen ids 
         agent_ids_seen = update_agent_ids_lst(
             payload_lst=payload_lst,
-            ids_lst=agent_ids_seen
+            ids_lst=list(customer_info.agent_ids_seen or [])
         )
 
         #returning the 
-        agents_returned_lst = retrieve_queryied_agents(
+        agents_returned_lst = await retrieve_queryied_agents(
             payload_lst=payload_lst
         )
 
@@ -94,7 +94,7 @@ async def customer_search_agent(customer_info:CustomerSearch,
         )
 
 """Route to get information about specific agent"""
-@customer_search_agent.get('agents/{agent_id_str}')
+@customer_search_router.get('/agents/{agent_id_str}', response_model=AgentResponse)
 async def get_searched_agent(agent_id_str:str,
                              session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
                              ):
@@ -103,7 +103,8 @@ async def get_searched_agent(agent_id_str:str,
         agent_id = UUID(agent_id_str)
     except Exception:
         raise HTTPException(
-            status_code='Invalid id form. Please try selecting agent again.'
+            status_code=400,
+            detail='Invalid id. Please try selecting the agent again.'
         ) 
 
     #relational database query
@@ -115,6 +116,8 @@ async def get_searched_agent(agent_id_str:str,
         agent = agent_query.scalar_one_or_none() #returns first agent found
 
         #merchant query 
+        if not agent:
+            raise HTTPException(status_code=404, detail='Agent not found.')
         merchant_query = await session_db.execute(select(Merchant).where(
             Merchant.id == agent.merchant_id
         ))
@@ -134,7 +137,7 @@ async def get_searched_agent(agent_id_str:str,
 
     #getting the agent's rating 
     try:
-        agent_rating = await get_agents_rating(session_db)
+        agent_rating = await get_agents_rating(agent, session_db)
     except Exception:
         raise HTTPException(
             status_code=500,

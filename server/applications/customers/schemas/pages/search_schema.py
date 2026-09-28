@@ -69,4 +69,5 @@ class AgentContract(BaseModel):
 #Schema for the agent hired/fired response
 class AgentContractResponse(BaseModel):
     hired_agent_id:str = None 
-    response:str = None 
+    hired_agent_name:str = None
+    response:str = None

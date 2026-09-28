@@ -158,12 +158,12 @@ async def get_customer_context(request:Request) -> Customer:
         if not request_data:
             raise HTTPException(
                 status_code=400,
-                detail=''
+                detail='The request body is missing or invalid.'
             )
     except Exception:
         raise HTTPException(
             status_code=500,
-            detail=''
+            detail='Unable to read the request body. Please try again.'
         )
 
     #getting token from request str -> uuid 

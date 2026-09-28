@@ -76,16 +76,16 @@ class CacheDatabase:
             await self.redis_db.rpush(key, value) #inserting the item in the lst 
 
             #getting lst elements 
-            redis_lst = self.redis_db.lrange(key, 0, -1) #getting full raing of the lst
+            redis_lst = await self.redis_db.lrange(key, 0, -1) #getting full range of the list
             if len(redis_lst) == 1:
-                self.redis_db.expire(key, time=exp_time)
+                await self.redis_db.expire(key, time=exp_time)
         except RedisError as error:
             raise error   
 
     #method to retriev value from redis lst
     async def retrieve_lst(self, key:str):
         try:
-            value = self.redis_db.lpop(key) #getting first side value 
+            value = await self.redis_db.lpop(key) #getting first value
             if not value:
                 return None
 
@@ -131,7 +131,7 @@ class VectorDatabase:
     def __init__(self, qdrant_url:str, 
                  qdrant_api_key:str, 
                  embedding_model:str,
-                 agent_collection:str):
+                 agent_collection:str="agents"):
         #initializing the qdrant database
         try:
             self.vector_database = AsyncQdrantClient(
@@ -165,7 +165,7 @@ class VectorDatabase:
 
     #static method to retrieve the Ids 
     @staticmethod
-    def retrieve_point_ids(self, database_query):
+    def retrieve_point_ids(database_query):
         point_id_lst = [] #empty lst to store 
 
         #querying through the points -> appending to lst
@@ -189,10 +189,11 @@ class VectorDatabase:
 
         #creating the collection
         try:
-            await self.vector_database.create_collection(
-                collection_name=collection_name,
-                vectors_config=VectorParams(size=dimension_size, distance=Distance.COSINE)
-            )
+            if not await self.vector_database.collection_exists(collection_name):
+                await self.vector_database.create_collection(
+                    collection_name=collection_name,
+                    vectors_config=VectorParams(size=dimension_size, distance=Distance.COSINE)
+                )
         except Exception as error:
             raise error
 
@@ -221,9 +222,10 @@ class VectorDatabase:
         collection_name = self.retrieve_collection_name(collection_type) #getting name for collection inserting into 
 
         #getting the embeddings as points 
-        vector_points = self.create_vector_points(
-            embeddings=embeddings
-        )
+        vector_points = [
+            PointStruct(id=str(uuid4()), vector=embedding, payload=payload)
+            for embedding in embeddings
+        ]
 
         #CRUD methods 
         #CREATE
@@ -231,7 +233,6 @@ class VectorDatabase:
             await self.vector_database.upsert(
                 collection_name=collection_name,
                 points=vector_points,
-                payload=payload,
                 wait=True
             )
         except Exception as error:
@@ -298,11 +299,11 @@ class VectorDatabase:
                 limit=1, 
                 collection_type=CollectionType.AGENT
             )
-            if not database_query:
-                raise Exception('Unable to ')
+            if not database_query.points:
+                return
 
             #getting the ids for the points 
-            points_id_lst = self.retrieve_point_ids(database_query)
+            points_id_lst = self.retrieve_point_ids(database_query.points)
 
             #deleting the points at the IDs
             await self.vector_database.delete(

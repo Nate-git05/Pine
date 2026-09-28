@@ -74,7 +74,7 @@ async def customer_verify(customer_info:CustomerSMSVerify, customer_token:str,
     except Exception:
         raise HTTPException(
             status_code=400,
-            detail=''
+            detail='Verification data could not be retrieved. Please request a new code.'
         )
 
     #query for the customers verification 

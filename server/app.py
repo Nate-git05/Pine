@@ -89,7 +89,7 @@ async def lifespan(app:FastAPI):
         relational_database = RelationalDatabase(
             postgres_uri=POSTGRES_URI
         )
-        app.state.relational_datbase = relational_database #setting the POstgres wrapper as state 
+        app.state.relational_database = relational_database #setting the Postgres wrapper as state
     except Exception:
         raise RuntimeError('Unable to connect and bind the Postgres uri to the relational mapper.')
     
@@ -97,7 +97,7 @@ async def lifespan(app:FastAPI):
     try:
         cache_database = CacheDatabase(
             cache_url=CACHE_URL,
-            cache_port=CACHE_PORT
+            cache_port=int(CACHE_PORT)
         )
         app.state.cache_database = cache_database
     except RedisError:
@@ -155,7 +155,31 @@ async def lifespan(app:FastAPI):
         await vector_database.close_db()
     except Exception:
         raise RuntimeError('Unable to close the vector database')
+    await app.state.http_client.close()
 
 
 #Initialzing the app 
 app = FastAPI(lifespan=lifespan)
+
+# Register customer routes after defining dependency getters to avoid import
+# cycles: route modules depend on the getters above.
+from server.applications.customers.routes.auth.signup import customer_auth_router
+from server.applications.customers.routes.auth import login as _customer_login_routes
+from server.applications.customers.routes.auth import verify as _customer_verify_routes
+from server.applications.customers.routes.pages.home.customer_payment import customer_home_router
+from server.applications.customers.routes.pages.search.agent_search import customer_search_router
+from server.applications.customers.routes.pages.search import hire_agent as _customer_hire_routes
+from server.applications.customers.routes.pages.activity.rest.customer_jobs import customer_activity_router as customer_jobs_router
+from server.applications.customers.routes.pages.activity.rest.customer_requests import customer_activity_router as customer_requests_router
+from server.applications.customers.routes.pages.home.notifications.notifications_sse import customer_sse_router
+from server.applications.customers.routes.webhooks.apis.job_webhook import customer_api_webhook_router
+from server.applications.customers.routes.webhooks.apis import client_webhook as _client_webhook_routes
+from server.applications.customers.routes.webhooks.apis import request_webhook as _request_webhook_routes
+from server.applications.customers.routes.pages.activity.graphql.activity_page import activity_page_graphql_router
+
+for router in (
+    customer_auth_router, customer_home_router, customer_search_router,
+    customer_jobs_router, customer_requests_router, customer_sse_router,
+    customer_api_webhook_router, activity_page_graphql_router,
+):
+    app.include_router(router)

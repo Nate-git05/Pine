@@ -65,9 +65,9 @@ async def get_customer_cards(customer:Annotated[Customer, Depends(get_current_cu
 
     #check if the customer has any connected payments 
     if not customer_payments:
-        ReturnedPaymentsList(
+        return ReturnedPaymentsList(
             response='There aren\'t any connected payments.',
-            payments_lst=None
+            payments_lst=[]
         )
 
     #getting pydantic lst of payments
@@ -105,7 +105,7 @@ async def customer_job_payment(payment_id_str:str,
     except Exception:
         raise HTTPException(
             status_code=400,
-            detail=''
+            detail='Invalid payment id. Please select a saved card and try again.'
         )
     
     #database query for the customers payment 
@@ -118,14 +118,14 @@ async def customer_job_payment(payment_id_str:str,
     except Exception:
         raise HTTPException(
             status_code=500,
-            detail=''
+            detail='Unable to look up the saved payment method. Please try again.'
         )
 
     #check if query returned None
     if not customer_payment:
         raise HTTPException(
             status_code=400,
-            detail=''
+            detail='That saved payment method was not found for your account.'
         )
 
     #getting the cached job 
@@ -136,14 +136,14 @@ async def customer_job_payment(payment_id_str:str,
     except Exception:
         raise HTTPException(
             status_code=500,
-            detail=''
+            detail='Unable to retrieve the pending job. Please submit the job again.'
         )
 
     #check if cache miss 
     if not cached_job:
         raise HTTPException(
             status_code=400,
-            detail=''
+            detail='Unable to process the payment. Check your payment method and try again.'
         )
 
     cached_job_dict = json.loads(cached_job) #loads in the cached job str as dict
@@ -158,11 +158,11 @@ async def customer_job_payment(payment_id_str:str,
     except Exception:
         raise HTTPException(
             status_code=500,
-            detail=''
+            detail='Unable to process the payment. Please try again.'
         )
 
     #check if the payment was successful
-    if not payment_success.status == "succeded":
+    if payment_success.status != "succeeded":
         raise HTTPException(
             status_code=400,
             detail=f'There was an error in the payment. {payment_success.status}'
@@ -182,7 +182,7 @@ async def customer_job_payment(payment_id_str:str,
     except Exception:
         raise HTTPException(
             status_code=500,
-            detail=''
+            detail='Payment was processed, but Pine could not save the job. Contact support before retrying to avoid a duplicate charge.'
         )
 
     #creating the pydantic model for the agents job request 
@@ -203,16 +203,23 @@ async def customer_job_payment(payment_id_str:str,
     #building out params for request
     headers = {
         'Content-type':'application/json',
-        'Signature':pine_siganture
+        'Signature':pine_siganture.hexdigest()
     }
     data = agent_job_model.model_dump_json()
     #getting the agents url for request
     try:
-        agent:Agent = await get_hired_agent_url()
+        hired_agent_query = await session_db.execute(select(HiredAgent).where(and_(
+            HiredAgent.id == cached_job_dict.get('agent_id'),
+            HiredAgent.customer_id == customer.id
+        )))
+        hired_agent = hired_agent_query.scalar_one_or_none()
+        if not hired_agent:
+            raise ValueError('Hired agent not found for this customer.')
+        agent:Agent = await get_hired_agent_url(session_db, hired_agent)
     except Exception:
         raise HTTPException(
             status_code=500,
-            detail=''
+            detail='Unable to locate the hired agent endpoint.'
         )
 
     #sending the request to the hired agent
@@ -226,12 +233,14 @@ async def customer_job_payment(payment_id_str:str,
             if response.status >= 300 or response.status < 200:
                 raise HTTPException(
                     status_code=400,
-                    detail=''
+                    detail='The agent endpoint did not accept the job. Check job activity before retrying.'
                 )
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(
             status_code=500,
-            detail=''
+            detail='Unable to send the job to the agent. Check job activity before retrying.'
         )
 
     #creating the notification for the customer 
@@ -263,12 +272,12 @@ async def customer_job_payment(payment_id_str:str,
         await session_db.rollback()
         raise HTTPException(
             status_code=500,
-            detail=''
+            detail='Payment completed, but Pine could not save the notification. Refresh your activity to check the job status.'
         )
 
     #setting the event for customer to get phone notification
     try:
-        notification_events.event_set(
+        await notification_events.event_set(
             data={
                 'customer_id':str(customer.id),
                 'customer_noti': {
@@ -281,7 +290,7 @@ async def customer_job_payment(payment_id_str:str,
     except Exception:
         raise HTTPException(
             status_code=500,
-            detail=''
+            detail='Payment completed, but Pine could not publish the notification. Refresh your notifications.'
         )
 
     #returning success to the client 
@@ -306,35 +315,35 @@ async def add_customer_payment(customer:Annotated[Customer, Depends(get_current_
     except Exception:
         raise HTTPException(
             status_code=400,
-            detail=''
+            detail='Unable to create a Stripe customer for card setup. Please try again.'
         )
 
     #caching the customer's payment 
     try:
         cache_key = f'{str(customer.id)}/stripe'
         data = json.dumps({
-            'customer_stripe_id':customer_stripe_id,
+            'customer_stripe_id':customer_stripe_id.id,
         })
         await cache_db.insert(cache_key, data)
     except Exception:
         raise HTTPException(
             status_code=500,
-            detail=''
+            detail='Unable to save card setup details. Please try again.'
         )
 
     #creating customers stripe session -> stripe to create payment id
     try:
         stripe_session = stripe.checkout.Session.create(
             api_key=stripe_api_key,
-            mode='payment',
-            customer=customer_stripe_id,
+            mode='setup',
+            customer=customer_stripe_id.id,
             success_url=stripe_success_url,
             cancel_url=stripe_failed_url
         )
-    except stripe.ErrorObject as err:
+    except Exception:
         raise HTTPException(
-            status_code='',
-            detail=err
+            status_code=400,
+            detail='Unable to start secure card setup. Please try again.'
         )
 
     return stripe_session.url #returning the url for customer to enter card info
@@ -349,19 +358,35 @@ async def created_payment_model(request:Request,
     try:
         #querying the from the cache 
         cache_key = f'{str(customer.id)}/stripe'
-        cache_data:dict = await json.loads(cache_db.retrieve(
+        cache_data:dict = json.loads(await cache_db.retrieve(
             key=cache_key
         ))
+        if not cache_data or not cache_data.get('customer_stripe_id'):
+            raise ValueError('Pending Stripe customer data is missing.')
 
         #getting customer's stripe session
         query_param_session = request.query_params.get('session_id') #getting url params 
+        if not query_param_session:
+            raise ValueError('Stripe checkout session id is missing.')
 
         #getting the customer's stripe session
         customer_session = stripe.checkout.Session.retrieve(
+                api_key=request.app.state.stripe_api_key,
                 id=query_param_session
         )
+        if customer_session.customer != cache_data['customer_stripe_id']:
+            raise ValueError('Stripe checkout session does not match this customer.')
         #getting the payment id from session
-        stripe_payment_id = customer_session.setup_intent
+        setup_intent_id = customer_session.setup_intent
+        if not setup_intent_id:
+            raise ValueError('Stripe setup was not completed.')
+        setup_intent = stripe.SetupIntent.retrieve(
+            api_key=request.app.state.stripe_api_key,
+            id=setup_intent_id
+        )
+        stripe_payment_id = setup_intent.payment_method
+        if not stripe_payment_id:
+            raise ValueError('Stripe did not return a saved payment method.')
 
         #creating the new Payment model for the customer 
         new_payment = StripePayment(
@@ -381,12 +406,12 @@ async def created_payment_model(request:Request,
 
         #returning the response -> client 
         return PaymentResponse(
-            response='Payment was successfully added.'
+            response='Payment method was successfully added.'
         )
     except Exception:
         raise HTTPException(
             status_code=500,
-            detail=''
+            detail='Unable to save the payment method. Please try again.'
         )
     
 #failed route
@@ -402,7 +427,7 @@ async def payment_creation_failed(customer:Annotated[Customer, Depends(get_curre
     except Exception:
         raise HTTPException(
             status_code=500,
-            detail=''
+            detail='Unable to clear pending card setup. Please try again.'
         )
 
     #returning response to client 

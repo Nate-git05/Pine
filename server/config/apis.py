@@ -72,13 +72,15 @@ class NotificationEvents:
 
     #delete from queue 
     async def get_item(self):
-        if not self.async_queue:
+        if self.async_queue.empty():
             return None 
 
         #else
         try:
             item = await self.async_queue.get()
-            return item #returning item in queue 
+            if self.async_queue.empty():
+                self.notification_event.clear()
+            return item #returning item in queue
         except Exception as error:
             raise error
 
@@ -103,12 +105,14 @@ class IncomingJobsEvents:
 
     #delete from queue 
     async def get_item(self):
-        if not self.async_queue:
+        if self.async_queue.empty():
             return None 
 
         #else
         try:
             item = await self.async_queue.get()
-            return item #returning item in queue 
+            if self.async_queue.empty():
+                self.jobs_event.clear()
+            return item #returning item in queue
         except Exception as error:
             raise error

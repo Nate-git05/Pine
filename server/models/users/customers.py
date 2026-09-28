@@ -17,10 +17,10 @@ import uuid
 """Python SQL model maps to table -> Postgres"""
 class Customer(Base):
     #defining attributes of the table 
-    __tablename__ = 'customer' #name for the table in postgres 
+    __tablename__ = 'customers' #name for the table in postgres
 
     #personal attributes of the table 
-    id:Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    id:Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     name:Mapped[str] = mapped_column(String(length=100), nullable=False)
 
     #contact information 

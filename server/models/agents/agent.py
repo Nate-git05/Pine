@@ -16,7 +16,7 @@ from sqlalchemy.orm import (
 from sqlalchemy.ext.mutable import MutableList
 from datetime import datetime
 from enum import StrEnum
-from uuid import UUID
+from uuid import UUID, uuid4
 
 """Enum to define the state of the agent"""
 class AgentState(StrEnum):
@@ -29,7 +29,7 @@ class Agent(Base):
     __tablename__ = 'agents' #name for the agent's table
 
     #defining attributes of the agent 
-    id:Mapped[UUID] = mapped_column(Uuid, primary_key=True)
+    id:Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
 
     #personal attributes 
     name:Mapped[str] = mapped_column(String(length=50), nullable=True)

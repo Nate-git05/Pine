@@ -13,7 +13,7 @@ from sqlalchemy.orm import (
 )
 from datetime import datetime
 from enum import StrEnum
-from uuid import UUID
+from uuid import UUID, uuid4
 
 """Enum for the state of the job"""
 class AgentJobState(StrEnum):
@@ -25,7 +25,7 @@ class AgentJob(Base):
     __tablename__ = 'agent_jobs' #name of the table 
 
     #defining attributes of the model
-    id:Mapped[UUID] = mapped_column(Uuid, primary_key=True) #unique identifier for the job 
+    id:Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4) #unique identifier for the job
     job_name:Mapped[str] = mapped_column(String(length=20), nullable=False)
     job_description:Mapped[str] = mapped_column(String(length=100), nullable=True)
     job_summary:Mapped[str] = mapped_column(String, nullable=True)
@@ -33,11 +33,11 @@ class AgentJob(Base):
     #state and price attributes for the job
     job_state:AgentJobState = mapped_column(String(length=10), nullable=False)
     job_price:Mapped[int] = mapped_column(Integer, nullable=False)
-    job_rating:Mapped[int] = mapped_column(Integer, nullable=False) 
+    job_rating:Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     #relationship params for the job
     hired_agent_id:Mapped[UUID] = mapped_column(ForeignKey('hired_agents.id'), nullable=False)
-    customer_id:Mapped[UUID] = mapped_column(ForeignKey('hired_agents.id'), nullable=False)
+    customer_id:Mapped[UUID] = mapped_column(ForeignKey('customers.id'), nullable=False)
     hired_agent_name:Mapped[str] = mapped_column(String(length=50), nullable=False)
 
     #audit attributes 

@@ -113,7 +113,7 @@ async def create_cusotmer_job_request(merchant_api_model:Annotated[MerchantAPI, 
 
     #starting the sse event for notification to client side 
     try:
-        events_manager.event_set(
+        await events_manager.event_set(
             data=notification_data
         )
     except Exception:

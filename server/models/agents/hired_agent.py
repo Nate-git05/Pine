@@ -15,7 +15,7 @@ from sqlalchemy.orm import (
 )
 from server.models.agents.agent import AgentState
 from sqlalchemy.ext.mutable import MutableList
-from uuid import UUID
+from uuid import UUID, uuid4
 from datetime import datetime
 
 """Hired agent table -> maps to Postgres"""
@@ -23,11 +23,11 @@ class HiredAgent(Base):
     __tablename__ = 'hired_agents'
 
     #defining attributes in the table 
-    id:Mapped[UUID] = mapped_column(Uuid, primary_key=True)
+    id:Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     name:Mapped[str] = mapped_column(String(length=50), nullable=False)
     description:Mapped[str] = mapped_column(String(length=100), nullable=False)
     price_per_job:Mapped[str] = mapped_column(Integer, nullable=False)
-    agent_rating:Mapped[float] = mapped_column(Double, nullable=False)
+    agent_rating:Mapped[float] = mapped_column(Double, nullable=False, default=0.0)
 
     #relationship attributes
     agent_id:Mapped[UUID] = mapped_column(ForeignKey('agents.id'), nullable=False)

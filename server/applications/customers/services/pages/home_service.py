@@ -42,9 +42,9 @@ def get_returned_payments_lst(payments_lst:list[StripePayment], stripe_api_key:s
             #looping though the stripe methods 
             for card_data in stripe_payment_method.data:
                 #updating pydantic model
-                returned_payment.payment_last4 = card_data.card.last4,
-                returned_payment.payment_card_type = card_data.card.exp_month
+                returned_payment.payment_last4 = card_data.card.last4
                 returned_payment.payment_card_type = card_data.card.brand
+                returned_payment.expires_at = f"{card_data.card.exp_month:02d}/{card_data.card.exp_year}"
 
             returned_lst.append(returned_payment) #appending the payment to lst 
         except Exception as err:
@@ -60,7 +60,7 @@ def customer_payment_for_job(cached_job:dict, customer_payment:StripePayment, st
             api_key=stripe_api_key,
             amount=cached_job.get('job_price'),
             currency='usd',
-            customer=customer_payment.customer_id,
+            customer=customer_payment.stripe_customer_id,
             payment_method=customer_payment.stripe_payment_id,
             confirm=True,
             off_session=True
@@ -83,7 +83,10 @@ async def create_agents_new_job(session_db:AsyncSession,
     except Exception as err:
         raise err
 
-    #building sql model for the new job 
+    if not hired_agent:
+        raise ValueError('The hired agent for this job could not be found.')
+
+    #building sql model for the new job
     agent_new_job = AgentJob(
         job_name=cached_job.get('job_name'),
         job_description=cached_job.get('job_description'),
@@ -142,4 +145,4 @@ async def create_new_job_payment(session_db:AsyncSession, agent_job:AgentJob):
     except Exception as error:
         await session_db.rollback()
         raise error
-    pass
+    return new_job_payment

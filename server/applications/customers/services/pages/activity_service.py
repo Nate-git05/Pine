@@ -50,7 +50,7 @@ def jobs_returned_lst(jobs_lst:list[AgentJob], job_state:AgentJobState):
         if job_state == AgentJobState.ACTIVE:
             job_returned.created_at = f'Created at: {active_job.assigned_at.strftime("%I:%M %p")}'
         else:
-            job_returned.completed_at = f'Completed on: {job_returned.completed_at.strftime("%m/%d/%Y")}'
+            job_returned.completed_at = f'Completed on: {active_job.completed_at.strftime("%m/%d/%Y")}'
 
         returned_jobs.append(job_returned) #appending the job to the list
 
@@ -58,7 +58,7 @@ def jobs_returned_lst(jobs_lst:list[AgentJob], job_state:AgentJobState):
 
 #helper function to return the lst of payments
 def get_customer_payments_lst(customer_payments:list[JobPayments]):
-    customer_payments = [] #lst to return the customer payments
+    returned_payments = [] #list to return the customer payments
 
     #looping through the job payments 
     for payment in customer_payments:
@@ -69,9 +69,9 @@ def get_customer_payments_lst(customer_payments:list[JobPayments]):
             paid_at=f'Paid at: {payment.paid_at.strftime("%m/%d/%Y")}'
         )
 
-        customer_payments.append(returned_payment) #appending the payment to lst
+        returned_payments.append(returned_payment) #appending the payment to list
 
-    return customer_payments #returning the lst of payments
+    return returned_payments #returning the list of payments
 
 #Helper function to get the agents hosted url 
 async def get_agent_url(session_db:AsyncSession, request:AgentJobRequest):

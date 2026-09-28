@@ -11,7 +11,7 @@ from sqlalchemy.orm import (
     Mapped,
     mapped_column
 )
-from uuid import UUID
+from uuid import UUID, uuid4
 from datetime import datetime
 
 """SQL model for the agent job payments -> maps to table Postgres"""
@@ -19,7 +19,7 @@ class JobPayments(Base):
     __tablename__ = 'job_payments' #name for table in Postgres
 
     #defining attributes of the table 
-    id:Mapped[UUID] = mapped_column(Uuid, primary_key=True)
+    id:Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     job_name:Mapped[str] = mapped_column(String(length=20), nullable=False)
     job_description:Mapped[str] = mapped_column(String(length=100), nullable=False)
     job_price:Mapped[int] = mapped_column(Integer, nullable=False)
@@ -28,7 +28,7 @@ class JobPayments(Base):
     agent_job_id:Mapped[UUID] = mapped_column(ForeignKey('agent_jobs.id'), nullable=False)
     hired_agent_id:Mapped[UUID] = mapped_column(ForeignKey('hired_agents.id'), nullable=False)
     customer_id:Mapped[UUID] = mapped_column(ForeignKey('customers.id'), nullable=False)
-    hired_agent_name:Mapped[str] = mapped_column()
+    hired_agent_name:Mapped[str] = mapped_column(String(length=50), nullable=False)
 
     #audit attributes 
     created_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

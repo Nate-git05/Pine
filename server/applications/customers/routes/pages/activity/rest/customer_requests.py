@@ -24,7 +24,7 @@ from uuid import UUID
 from aiohttp import ClientSession, ClientError
 import json
 
-customer_activity_router = APIRouter('/customer/activity') #router for the activity page REST methods
+customer_activity_router = APIRouter(prefix='/customer/activity') #router for the activity page REST methods
 
 """Route to get the agents job request for the customer"""
 @customer_activity_router.get('/jobs/requests/{request_id_str}', response_model=IndividualJobRequest)

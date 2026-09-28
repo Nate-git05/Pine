@@ -10,7 +10,7 @@ from sqlalchemy.orm import (
     Mapped,
     mapped_column
 )
-from uuid import UUID
+from uuid import UUID, uuid4
 from enum import StrEnum
 from datetime import datetime
 
@@ -24,7 +24,7 @@ class AgentJobRequest(Base):
     __tablename__ = 'job_requests' #name of table in Postgres
 
     #defining attributes of the model 
-    id:Mapped[UUID] = mapped_column(Uuid, primary_key=True) #unique identifier
+    id:Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4) #unique identifier
     job_summary:Mapped[str] = mapped_column(String(length=100), nullable=False)
 
     #request attributes 
