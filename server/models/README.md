@@ -1,5 +1,13 @@
-# SQLAlchemy models handoff
+# Server persistence models
 
-The subdirectories define customer/merchant identities, agents and hires, job requests and jobs, payment records, and notifications. Newly created records now receive UUIDs for the edited models, and job ratings can be absent until a customer rates the completed job.
+SQLAlchemy table models are grouped by domain. UUIDs are generated in Python for most primary keys. The [end-to-end server guide](../README.md#persistence-and-money-conventions) explains when records are written in each customer flow.
 
-`Customer` is mapped to `customers` to match foreign keys in the rest of the model tree. Confirm the live schema and migrate it if it currently uses a singular table name before deployment. The broader model layer still needs a full schema audit for nullability, enums, relationships, and migrations.
+- `users/`: customer and merchant identity records.
+- `auths/`: SMS verification records, hashed customer sessions, and merchant API credentials/signing helpers.
+- `agents/`: public agents and customer-specific `HiredAgent` contracts/states.
+- `activities/jobs/`: `AgentJob` and agent-created `AgentJobRequest` records.
+- `activities/transactions/`: application-side `JobPayments` history; not the Stripe source of truth.
+- `integrations/stripe_payments/`: customer's Stripe Customer/PaymentMethod references behind a Pine saved-payment UUID.
+- `notifications/`: notification rows for customers and merchants.
+
+There are no migration files in this tree. `Customer.__tablename__` is `customers` because the other model foreign keys target `customers.id`; verify the deployed database and migrate it if needed. Model declarations and a running database schema can differ, so compare them before rollout.

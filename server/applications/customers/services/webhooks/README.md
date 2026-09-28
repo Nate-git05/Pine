@@ -1,3 +1,5 @@
-# Webhook service notes
+# Customer webhook services
 
-Merchant API authentication obtains an async session through the normal request dependency and validates the `Api-Key` header. Callback ownership is checked by following the job's hired-agent record to its owning merchant. Signatures are hex encoded HMAC-SHA256 values; producers and consumers must sign the exact same serialized JSON body.
+`webhook_service.py` loads a `MerchantAPI` from the `Api-Key` header, extracts the caller's `Signature`, verifies HMAC-SHA256 against the request's Pydantic `model_dump_json()` serialization, and checks that the merchant owns the agent attached to a job before accepting a callback. It also builds notification text, looks up an agent's webhook, and forwards cached completion data to configured `JOB_WEBHOOK_URL` with a Pine signature.
+
+Initial offer ingress is different: it verifies `Signature` using Pine's server key, then caches/publishes an offer. See the [webhook route guide](../../routes/webhooks/apis/README.md). There is no nonce/replay protection or durable outbox for outbound callbacks.

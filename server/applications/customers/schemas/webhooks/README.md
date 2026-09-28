@@ -1,3 +1,5 @@
-# Webhook payload contracts
+# Customer webhook payload contracts
 
-The incoming client-offer payload requires customer and agent identifiers, names, a description, and a positive `job_price` in cents. The customer-facing offer schema includes the agent ID needed to match the offer to a hired agent before payment. Completion and request callback payload fields are required so malformed callbacks fail at the API boundary.
+`webhook_schema.py` defines three agent/merchant-originated payloads: a proposed client job (`customer_id`, `agent_id`, names/descriptions, positive integer `job_price` in cents), a job completion (`job_id`, `job_action_summary`), and a job request (`job_id`, request name/description, current summary). Pine's generated offer SSE adds a unique `offer_id` and converts its display price to dollars.
+
+These bodies are signed as their Pydantic `model_dump_json()` serialization. Callback merchant API credentials and signature validation are in `services/webhooks/webhook_service.py`; initial offer ingress instead validates Pine's server key. See the [webhook route guide](../../routes/webhooks/apis/README.md) for call direction and effects.
