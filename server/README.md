@@ -2,7 +2,7 @@
 
 ## What this checkout contains
 
-This branch contains a FastAPI customer backend under `server/`. The `client/` directory currently contains only a README, so this checkout does not include the customer application UI. Merchant route directories also contain placeholders and are not a complete merchant backend. Runtime configuration is loaded from `server/.env`; never commit that file or copy credentials into handoff notes.
+This branch contains a FastAPI customer backend under `server/`. The `client/mobile/` directory contains customer integration documentation but no React Native source or navigation/screens. The `client/web/` directory is intended for the merchant Next.js app and has no app source in this checkout. Merchant route directories also contain placeholders and are not a complete merchant backend. Runtime configuration is loaded from `server/.env`; never commit that file or copy credentials into handoff notes.
 
 ## How the server is organized
 
@@ -37,6 +37,17 @@ This branch contains a FastAPI customer backend under `server/`. The `client/` d
 The ASGI object is `server.app:app`. Startup requires the environment variables validated in `config/configuration.py` and reachable external services. Dependency pins are in `requirements.txt`.
 
 See the directory READMEs beside the edited code for focused handoff notes.
+
+## Customer mobile API contract
+
+The customer app route-by-route contract is documented in [`client/mobile/README.md`](../client/mobile/README.md), including auth, search/hire, job-offer SSE and payment, activity, notifications, and profile gaps. The customer API has no `/api/v1` prefix. The mobile docs are based on routes registered in `app.py`, not on a checked-in client implementation.
+
+Key implementation boundaries for the mobile app:
+
+- Agent/merchant services POST incoming offers to Pine at `/customer/webhooks/client`; the mobile app consumes authenticated `/customer/webhooks/client/event` and must retain the event's `offer_id` for the payment route. The webhook POST is not a mobile API.
+- Customer chat message send/history and a hired-agent list endpoint are not implemented. `agent_chat.py` is empty, so the intended conversation UI cannot yet be fully backed by this server.
+- Customer notification SSE exists, but notification REST/GraphQL history routes and profile APIs are not mounted. Event queues are process-local and do not replay missed events.
+- `GET /customer/home/cards`, `POST /customer/home/payment/add`, and `POST /customer/home/payment/{payment_id}/{offer_id}` form the saved-card/job-offer payment path. The payment route requires the exact saved-card ID and offer ID.
 
 ## Additional fixes in the current working changes
 
