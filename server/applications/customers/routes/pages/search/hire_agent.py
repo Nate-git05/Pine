@@ -110,6 +110,7 @@ async def customer_hire_agent(agent_id_str:str,
     #returning response to client 
     return AgentContractResponse(
         hired_agent_id=str(new_agent_hire.id),
+        hired_agent_name=new_agent_hire.name,
         response=f'The agent {new_agent_hire.name} was successfully hired.'
     )
 

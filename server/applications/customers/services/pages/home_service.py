@@ -10,6 +10,7 @@ from server.models.activities.jobs.agent_job import (
 from server.models.users.customers import Customer
 from server.models.agents.hired_agent import HiredAgent
 from server.models.agents.agent import Agent
+from server.models.activities.transactions.job_payments import JobPayments
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 import stripe
@@ -122,4 +123,23 @@ async def get_hired_agent_url(session_db:AsyncSession, hired_agent:HiredAgent):
 
 #helper function to create new job payment 
 async def create_new_job_payment(session_db:AsyncSession, agent_job:AgentJob):
+    try:
+        new_job_payment = JobPayments(
+            job_name=agent_job.job_name,
+            job_description=agent_job.job_description,
+            job_price=agent_job.job_price,
+            agent_job_id=agent_job.id,
+            hired_agent_id=agent_job.hired_agent_id,
+            customer_id=agent_job.customer_id,
+            hired_agent_name=agent_job.hired_agent_name,
+            created_at=datetime.now(timezone.utc),
+            paid_at=datetime.now(timezone.utc)
+        )
+
+        #staging/committing the newly added payment 
+        session_db.add(new_job_payment)
+        await session_db.commit()
+    except Exception as error:
+        await session_db.rollback()
+        raise error
     pass
