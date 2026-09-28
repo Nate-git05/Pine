@@ -23,3 +23,7 @@ class AgentsJobRequest(BaseModel):
 #schema for the Payment response 
 class PaymentResponse(BaseModel):
     response:str = None 
+
+#Schema for response from success/failed url for stripe 
+class StripePaymentResponse(BaseModel):
+    response:str = None 

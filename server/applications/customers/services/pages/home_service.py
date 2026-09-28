@@ -119,3 +119,7 @@ async def get_hired_agent_url(session_db:AsyncSession, hired_agent:HiredAgent):
         raise Exception('Unable to locate agent from query')
 
     return agent #returning the agent 
+
+#helper function to create new job payment 
+async def create_new_job_payment(session_db:AsyncSession, agent_job:AgentJob):
+    pass
