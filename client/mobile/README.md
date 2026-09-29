@@ -9,11 +9,11 @@ Use the deployment's API origin as `API_BASE_URL`. The server does not mount an 
 | Customer app page/flow | Documentation | Backend surface |
 | --- | --- | --- |
 | Sign up, login, verification | [Auth](routes/auth/README.md) | `/auth/customer/*` |
-| Home, hired-agent conversations, incoming job cards | [Home and agent chat](routes/home-chat/README.md) | Job offer SSE exists; chat and hired-agent-list APIs are missing |
-| Select/add payment method from a job card | [Payment flow](routes/payment/README.md) | `/customer/home/cards`, `/payment/add`, `/payment/{payment_id}/{offer_id}` |
+| Home, hired-agent conversations, incoming job cards | [Home and agent chat](routes/home-chat/README.md) | Chat reply and job-offer SSE exist; hired-agent list/history APIs are missing |
+| Select/add payment method from a job card | [Payment flow](routes/payment/README.md) | `/customer/home/cards`, `/payment/add`, `/payment/{payment_id}/{agent_id}/{offer_id}` |
 | Find, inspect, hire, and fire agents | [Agent discovery](routes/search/README.md) | `/customer/search/*` |
 | Requests, active/completed jobs, payment history | [Activity](routes/activity/README.md) | Activity REST and GraphQL |
-| Live customer notifications | [Notifications](routes/notifications/README.md) | Notification SSE only |
+| Live notifications and notification inbox | [Notifications](routes/notifications/README.md) | SSE, GraphQL unread list, REST detail/read, and clear unread routes |
 | Customer profile/settings | [Profile](routes/profile/README.md) | No mounted profile API currently |
 
 ## Shared client/server conventions
@@ -25,8 +25,10 @@ Use the deployment's API origin as `API_BASE_URL`. The server does not mount an 
 - Use a React Native SSE implementation that can set the Bearer header. Do not put the session token in an event-stream query parameter. SSE delivery has no guaranteed replay after reconnect.
 - Money values are inconsistent across surfaces: search, job detail, and incoming-offer display values are dollars, while `job_price` accepted from merchant callbacks and payment persistence use cents. Treat each endpoint's documented unit separately.
 
-## Important missing pieces
+## Current backend scope and gaps
 
-The current server has no customer message-send/chat completion endpoint, no endpoint to list a customer's hired agents, no profile API, and no notification history/read API. The app can document the intended chat experience, but cannot complete those operations against this backend until those contracts are implemented. Incoming job offers arrive over SSE; there is no REST endpoint to recover offers missed while disconnected.
+The server has a customer chat completion route at `POST /customer/home/chat/{hired_agent_id}`. It returns a reply and keeps router/tooling context in Redis, but there is no endpoint to list hired agents or retrieve chat history. The agent tool implementations are not wired yet, so the chat does not submit jobs. Profile APIs are not mounted. Incoming offers arrive over SSE and cannot be recovered through a REST list after a disconnect.
 
-The customer webhook POST endpoints under `/customer/webhooks` are called by the agent/merchant service into Pine. They are not mobile-client endpoints. The mobile app consumes the corresponding customer SSE stream and then calls the payment endpoint.
+Customer notifications have an authenticated SSE stream, an unread-notification GraphQL query, a REST detail route that marks one notification read, and a REST route that marks all unread notifications read. See [Notifications](routes/notifications/README.md) for the current contract.
+
+The customer webhook POST endpoints under `/customer/webhooks` are called by the agent/merchant service into Pine. They are not mobile-client endpoints. The mobile app consumes the corresponding customer SSE stream and then calls the payment endpoint with the offer ID from that event.

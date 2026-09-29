@@ -4,9 +4,17 @@
 
 The home page is the blank starting state before an agent is hired. After hiring, the intended experience is a GPT/Claude-style conversation with that agent. A job offer from an agent should appear as a clickable message/card in that conversation. Selecting it opens the [payment flow](../payment/README.md).
 
-## What the backend currently supports
+## Send a chat message
 
-There is no mounted endpoint to list hired agents, load chat history, send a free-form customer message, or receive an agent's conversational reply. `POST /customer/search/agent/hire/{agent_id}` creates a hire, but no customer-facing list endpoint returns those hires for home-page bootstrap. The `agent_chat.py` route module is empty. These are backend gaps; the app cannot implement a working conversation lifecycle from the current API alone.
+Call authenticated `POST /customer/home/chat/{hired_agent_id}` with the hired-agent row ID (the ID returned when the customer hires an agent), not the public agent ID:
+
+```json
+{"customer_message":"Can you help me plan this task?"}
+```
+
+The response is `{"response":"..."}`. The server verifies that the hire belongs to the signed-in customer and is active. Router and tooling context are stored separately in Redis for that customer and hired-agent pair. There is no endpoint to list a customer's hires or retrieve chat history, so the app must get the hired-agent ID from the hire response or another available app state source. Do not assume the backend can bootstrap the home screen's hired-agent list after a fresh install or sign-in.
+
+The chat route uses a router agent and a tooling agent with classification-specific skill instructions. Tool implementations and job submission from chat are not wired yet; this endpoint returns an agent response but does not create a job or payment.
 
 ## Incoming job offers
 
