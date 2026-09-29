@@ -14,8 +14,10 @@ from server.applications.customers.schemas.webhooks.webhook_schema import Cached
 from server.models.activities.transactions.job_payments import JobPayments
 from server.models.notifications.notification_message import Notification
 from server.applications.customers.schemas.pages.home_schemas import IndividualNotification
+from server.applications.customers.agent.customer_agent import MessageType
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select
+import json
 import stripe
 from datetime import datetime, timezone
 from uuid import UUID
@@ -161,3 +163,50 @@ def get_notification_returned(customer_notifications:list[Notification]):
         returned_lst.append(returned_notification) #appending the notification to lst
 
     return returned_lst #returning lst
+
+"""Helper functions to get the agents message"""
+#returns the router agent message
+def create_router_agent_message(previous_context:list[str],
+                                customer_message:str):
+    return json.dumps({
+        'context':previous_context,
+        'content':customer_message
+    })
+
+#returns the tooling agent message 
+def create_tooling_agent_message_str(previous_context:list[str], 
+                        hired_agent_id:str,
+                        customer_message:str):
+    #message dict
+    message_content = {
+        'hired_agent_id':hired_agent_id,
+        'content':customer_message
+    }
+
+    #returning the payload message
+    return json.dumps(
+        {
+            'message': {
+                'context':previous_context,
+                'content':message_content
+            }
+        }
+    )
+
+#returned context for the tooling agent
+def return_tooling_agent_context(customer_message:str, agent_response:str):
+    return {
+        'content': {
+        'message':customer_message,
+        'response':agent_response
+        }
+    }
+
+#returned context for the router agent 
+def return_router_agent_context(customer_message:str, message_type:MessageType):
+    return {
+        'content': {
+            'message_type':message_type.value,
+            'message':customer_message
+        }
+    }

@@ -1,8 +1,13 @@
 #Schema file for the home page for the cusotmer 
-from pydantic import BaseModel
+from pydantic import (
+    BaseModel,
+    field_validator,
+    model_validator
+)
 import strawberry
 from datetime import datetime
 from server.models.notifications.notification_message import NotificationType
+import re
 
 #Schema for the returned stripe payment
 class ReturnedPayments(BaseModel):
@@ -41,6 +46,37 @@ class ReturnedNotification(BaseModel):
 
 #Schema for the response -> Notifications been cleared
 class NotificationsCleared(BaseModel):
+    response:str = None 
+
+#Schema for the customer request for agent chat
+class AgentChatRequest(BaseModel):
+    customer_message:str | None = None 
+
+    #validating the field 
+    @field_validator('customer_message')
+    @classmethod
+    def message_check(message:str) -> str:
+        message = message.strip() #stripping/leading whitespace 
+        if not message:
+            raise ValueError('')
+
+        #checking the contents of the message 
+        pattern = r''
+        if re.match(pattern, message):
+            raise ValueError('')
+        
+        return message
+
+    #validating the model 
+    @model_validator(mode='after')
+    def customer_chat_check(self):
+        if not self.customer_message:
+            raise ValueError('')
+
+        return self #returns the schema
+
+#Schema for the response from chat route 
+class AgentChatResponse(BaseModel):
     response:str = None 
 
 """GraphQl schemas for responses"""

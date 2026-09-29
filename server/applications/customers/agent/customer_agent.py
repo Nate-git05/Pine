@@ -7,8 +7,10 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pydantic import BaseModel
 from pathlib import Path
-from sqlalchemy.ext.asyncio import AsyncSession
-from server.config.database import CacheDatabase
+from server.config.database import (
+    CacheDatabase,
+    RelationalDatabase
+)
 from typing import Any
 import json
 
@@ -57,7 +59,7 @@ class PineAgent:
     def __init__(self, 
                  routing_agent:str = None,
                  tooling_agent:str = None,
-                 session_db:AsyncSession = None,
+                 relational_db:RelationalDatabase = None,
                  cache_db:CacheDatabase = None):
         #defining the attributes 
         self.routing_agent = routing_agent
@@ -143,7 +145,7 @@ class PineAgent:
         return agent_skill
 
     #method to create and run -> routing agent
-    async def run_router_agent(self, customer_message:str, agent_name:str='router_agent'):
+    async def run_router_agent(self, router_message:str, agent_name:str='router_agent'):
         #getting the router skill
         try:
             router_skill = self.get_agent_skill(
@@ -155,7 +157,7 @@ class PineAgent:
 
         #creating the router agent
         router_agent = Agent(
-            name=router_agent,
+            name=agent_name,
             prompt=router_skill,
             model=self.routing_agent,
             output_type=AgentOutput
@@ -165,19 +167,13 @@ class PineAgent:
         try:
             agent_result = await Runner.run(
                 router_agent,
-                customer_message
+                router_message
             )
         except Exception as error:
             raise error 
 
         message_type:MessageType = agent_result.final_output #getting format output from agent run
-
-        #creating the tooling agent message 
-        tooling_agent_message = AgentMessage(
-            message_type=message_type,
-            message=customer_message
-        )
-        return tooling_agent_message #returning the agent's message 
+        return message_type
 
     #creating the tooling agent 
     async def run_tooling_agent(self, 

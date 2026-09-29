@@ -13,7 +13,9 @@ from server.config.configuration import (
     QDRANT_API_KEY,
     JOB_WEBHOOK_URL,
     EMBEDDING_MODEL,
-    STRIPE_API_KEY
+    STRIPE_API_KEY,
+    ROUTER_AGENT,
+    TOOLING_AGENT
 )
 from server.config.database import (
     RelationalDatabase,
@@ -86,7 +88,10 @@ async def lifespan(app:FastAPI):
 
     #configuring the server's agent 
     app.state.pine_agent = PineAgent(
-        
+        routing_agent=ROUTER_AGENT,
+        tooling_agent=TOOLING_AGENT,
+        session_db=relational_database,
+        cache_db=cache_database
     )
 
     yield #yields the application running
