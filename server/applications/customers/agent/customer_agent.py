@@ -60,16 +60,18 @@ class AgentType(StrEnum):
     TOOLING='tooling'
 
 
-# Keep each routing class connected to its matching tooling instructions.
+# Keep the router instructions separate from the tooling skill instructions.
 SKILL_DIRECTORY = Path(__file__).parent / 'skills'
+ROUTER_SKILL_DIRECTORY = SKILL_DIRECTORY / 'router'
+TOOLING_SKILL_DIRECTORY = SKILL_DIRECTORY / 'tooling'
 DEFAULT_SKILL_FILE_MAP: dict[MessageType | str, Path] = {
-    'router': SKILL_DIRECTORY / 'router.md',
-    MessageType.JOBCREATION: SKILL_DIRECTORY / 'job_creation.md',
-    MessageType.CONVERSATION: SKILL_DIRECTORY / 'conversation.md',
-    MessageType.INFORMATIVE: SKILL_DIRECTORY / 'informative.md',
-    MessageType.HARMFUL: SKILL_DIRECTORY / 'harmful.md',
-    MessageType.SUPPORT: SKILL_DIRECTORY / 'support.md',
-    MessageType.UNKNOWN: SKILL_DIRECTORY / 'unknown.md',
+    'router': ROUTER_SKILL_DIRECTORY / 'router.md',
+    MessageType.JOBCREATION: TOOLING_SKILL_DIRECTORY / 'job_creation.md',
+    MessageType.CONVERSATION: TOOLING_SKILL_DIRECTORY / 'conversation.md',
+    MessageType.INFORMATIVE: TOOLING_SKILL_DIRECTORY / 'informative.md',
+    MessageType.HARMFUL: TOOLING_SKILL_DIRECTORY / 'harmful.md',
+    MessageType.SUPPORT: TOOLING_SKILL_DIRECTORY / 'support.md',
+    MessageType.UNKNOWN: TOOLING_SKILL_DIRECTORY / 'unknown.md',
 }
 
 """Defining the Pine Agent model"""
