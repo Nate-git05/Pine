@@ -9,14 +9,10 @@ from server.models.users.merchants import Merchant
 from server.models.activities.jobs.agent_job import AgentJob
 from server.models.agents.hired_agent import HiredAgent
 from server.models.agents.agent import Agent
-from server.config.database import CacheDatabase
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
-from aiohttp import ClientSession
 from enum import StrEnum
 from uuid import UUID
-import hmac 
-import hashlib
 
 """Dependency function to retrieve the merchants api key"""
 #dependency function auht the merchant with api key 
@@ -158,47 +154,3 @@ def create_request_notification_header(agent_name:str):
 def create_request_notification_message(agent_name:str, job_name:str):
     return f'Hey your agent {agent_name} has made a request for the job\
              {job_name}. Check your activity page to view the request.'
-
-#helper function to retrieve item from cache and send a request for it 
-async def send_cached_job(cache_key:str, 
-                          cache_db:CacheDatabase, 
-                          http_client:ClientSession,
-                          url_request:str,
-                          pine_server_key:str):
-    try:
-        cache_value:str = await cache_db.retrieve_lst(
-            key=cache_key
-        )
-    except Exception as error:
-        raise error
-
-    #check if there are any jobs cached 
-    if not cache_value:
-        return 
-
-    #creating header params for the request 
-    pine_signature = hmac.new(
-        key=pine_server_key.encode('utf-8'),
-        msg=cache_value.encode('utf-8'),
-        digestmod=hashlib.sha256
-    ).hexdigest()
-    headers = {
-        'Content-type':'application/json',
-        'Signature':pine_signature
-    }
-
-    #sending request to webhook server
-    try:
-        async with http_client.post(
-            url=url_request,
-            headers=headers,
-            data=cache_value
-        ) as response:
-            #checking the status code of response 
-            if response.status >= 300 or response.status < 200:
-                raise Exception('Unable to send webhook request.')
-
-    except Exception as error:
-        raise error
-
-    return

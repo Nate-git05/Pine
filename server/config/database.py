@@ -16,7 +16,8 @@ from qdrant_client.models import (
     PointStruct,
     PointIdsList,
     Filter,
-    HasIdCondition
+    FieldCondition,
+    MatchAny,
 )
 from openai import AsyncClient
 from uuid import uuid4
@@ -64,7 +65,7 @@ class CacheDatabase:
 
     #CRUD methods for the cache 
     #Create
-    async def insert(self, key:str, value:str, exp_time:int=600):
+    async def insert(self, key:str, value:str, exp_time:int=600) -> None:
         try:
             await self.redis_db.set(key, value, ex=exp_time)
         except RedisError as error:
@@ -85,7 +86,7 @@ class CacheDatabase:
             raise error
 
     #redis list insert 
-    async def insert_list(self, key:str, value:str, exp_time:int=600):
+    async def insert_list(self, key:str, value:str, exp_time:int=600) -> None:
         try:
             await self.redis_db.rpush(key, value) #inserting the item in the lst 
 
@@ -96,19 +97,29 @@ class CacheDatabase:
         except RedisError as error:
             raise error   
 
-    #method to retriev value from redis lst
-    async def retrieve_lst(self, key:str):
+    # Return the number of cached items without removing anything.
+    async def list_length(self, key: str) -> int:
         try:
-            value = await self.redis_db.lpop(key) #getting first value
-            if not value:
-                return None
-
-            return value #gatting the value in redis lst
+            return await self.redis_db.llen(key)
         except RedisError as error:
-            raise error 
+            raise error
+
+    # Remove one exact item from the list after its payment is complete.
+    async def remove_list_item(self, key: str, value: str, count: int = 1) -> int:
+        try:
+            return await self.redis_db.lrem(key, count, value)
+        except RedisError as error:
+            raise error
+
+    # Read the full Redis list without consuming any of its items.
+    async def retrieve_lst(self, key:str) -> list[str]:
+        try:
+            return await self.redis_db.lrange(key, 0, -1)
+        except RedisError as error:
+            raise error
 
     #Get
-    async def retrieve(self, key:str):
+    async def retrieve(self, key:str) -> str | None:
         #retrieves the value in cache at key
         try:
             value = await self.redis_db.get(key)
@@ -121,7 +132,7 @@ class CacheDatabase:
             raise error
 
     #Delete
-    async def delete(self, key:str):
+    async def delete(self, key:str) -> None:
         #deletes the value at key in cache 
         try:
             await self.redis_db.delete(key) 
@@ -288,8 +299,9 @@ class VectorDatabase:
                 query=embeddings,
                 query_filter=Filter(
                     must_not=[
-                        HasIdCondition(
-                            has_id=excluded_ids
+                        FieldCondition(
+                            key='agent_id',
+                            match=MatchAny(any=excluded_ids),
                         )
                     ]
                 ),

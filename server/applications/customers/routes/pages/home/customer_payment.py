@@ -14,6 +14,11 @@ from server.dependencies import (
 from server.applications.customers.services.auth.auth_service import get_current_customer
 from server.models.users.customers import Customer
 from server.models.agents.agent import Agent
+from server.models.activities.jobs.agent_job import AgentJob, AgentJobState
+from server.models.agents.hired_agent import (
+    HiredAgent
+)
+from server.models.agents.agent import AgentState
 from server.models.integrations.stripe_payments.stripe_payment import StripePayment
 from server.models.notifications.notification_message import (
     Notification,
@@ -31,43 +36,21 @@ from server.applications.customers.services.pages.home_service import (
     customer_payment_for_job,
     create_agents_new_job,
     get_hired_agent_url,
-    create_new_job_payment
+    create_new_job_payment,
+    get_pending_job_queue_key,
 )
+from server.applications.customers.schemas.webhooks.webhook_schema import CachedClientJob
 from server.config.database import CacheDatabase
 from server.config.apis import NotificationEvents
 from sqlalchemy import select, and_ 
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID, uuid4
-from typing import Annotated, AsyncGenerator
+from uuid import UUID, NAMESPACE_URL, uuid5
+from typing import Annotated
 from aiohttp import ClientSession
 from datetime import datetime, timezone
 import stripe
 import hmac 
-import hashlib
 import json
-
-
-async def lock_payment_offer(
-    offer_id_str:str,
-    customer:Annotated[Customer, Depends(get_current_customer)],
-    cache_db:Annotated[CacheDatabase, Depends(get_cache_db)]
-) -> AsyncGenerator[None, None]:
-    try:
-        offer_id = UUID(offer_id_str)
-    except ValueError as error:
-        raise HTTPException(status_code=400, detail='Invalid job offer.') from error
-    lock_key = f'payment-lock/{customer.id}/{offer_id}'
-    lock_token = str(uuid4())
-    if not await cache_db.acquire_lock(lock_key, lock_token):
-        raise HTTPException(status_code=409, detail='This job offer is already being processed.')
-    try:
-        yield
-    finally:
-        try:
-            await cache_db.release_lock(lock_key, lock_token)
-        except Exception:
-            # The lock has a short expiry, so a Redis outage cannot leave it permanent.
-            pass
 
 """Route for the customer to pay for the job"""
 @customer_home_router.get('/cards', response_model=ReturnedPaymentsList)
@@ -112,8 +95,9 @@ async def get_customer_cards(customer:Annotated[Customer, Depends(get_current_cu
     )
 
 """Route for the customer to pay with selected card"""
-@customer_home_router.post('/payment/{payment_id_str}/{offer_id_str}', response_model=PaymentResponse)
+@customer_home_router.post('/payment/{payment_id_str}/{agent_id_str}/{offer_id_str}', response_model=PaymentResponse)
 async def customer_job_payment(payment_id_str:str,
+                               agent_id_str:str,
                                offer_id_str:str,
                                customer:Annotated[Customer, Depends(get_current_customer)], 
                                session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
@@ -121,8 +105,7 @@ async def customer_job_payment(payment_id_str:str,
                                stripe_api_key:Annotated[str, Depends(get_stripe_api_key)],
                                http_client:Annotated[ClientSession, Depends(get_async_http)],
                                pine_server_key:Annotated[str, Depends(get_server_key)],
-                               notification_events:Annotated[NotificationEvents, Depends(get_notifications_events)],
-                               _payment_offer_lock:Annotated[None, Depends(lock_payment_offer)]):
+                               notification_events:Annotated[NotificationEvents, Depends(get_notifications_events)]):
     #casting payment id str -> uuid
     try:
         payment_id = UUID(payment_id_str)
@@ -131,6 +114,11 @@ async def customer_job_payment(payment_id_str:str,
             status_code=400,
             detail='Invalid payment id. Please select a saved card and try again.'
         )
+
+    try:
+        agent_id = UUID(agent_id_str)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail='Invalid agent id. Please select the offer again.') from error
 
     try:
         offer_id = UUID(offer_id_str)
@@ -161,54 +149,79 @@ async def customer_job_payment(payment_id_str:str,
             detail='That saved payment method was not found for your account.'
         )
 
-    #getting the cached job 
+    # Read this hired-agent's list and find the exact offer without consuming it.
+    queue_key = get_pending_job_queue_key(customer.id, agent_id)
     try:
-        cached_job = await cache_db.retrieve(key=f'pending-job/{customer.id}/{offer_id}')
+        queued_jobs = await cache_db.retrieve_lst(queue_key)
     except Exception:
         raise HTTPException(
             status_code=500,
             detail='Unable to retrieve the pending job. Please submit the job again.'
         )
 
-    #check if cache miss 
-    if not cached_job:
+    cached_job_value = None
+    try:
+        for queued_job_value in queued_jobs:
+            queued_job = CachedClientJob.model_validate_json(queued_job_value)
+            if queued_job.offer_id == offer_id:
+                cached_job_value = queued_job_value
+                break
+    except Exception as error:
+        raise HTTPException(status_code=500, detail='A cached job offer is invalid.') from error
+
+    if not cached_job_value:
         raise HTTPException(
             status_code=400,
             detail='Unable to process the payment. Check your payment method and try again.'
         )
 
-    cached_job_dict = json.loads(cached_job) #loads in the cached job str as dict
-    if cached_job_dict.get('offer_id') != str(offer_id) or cached_job_dict.get('customer_id') != str(customer.id):
-        raise HTTPException(status_code=400, detail='This job offer is invalid or has expired.')
-
-    #Validate the offer and customer-agent relationship before charging the card.
     try:
-        offered_agent_id = UUID(cached_job_dict.get('agent_id'))
-        offered_price = cached_job_dict.get('job_price')
-        if not isinstance(offered_price, int) or offered_price <= 0:
-            raise ValueError('The offer price must be a positive amount in cents.')
-        hired_agent_query = await session_db.execute(select(HiredAgent).where(and_(
-            HiredAgent.agent_id == offered_agent_id,
-            HiredAgent.customer_id == customer.id,
-            HiredAgent.agent_state == 'active'
-        )))
-        if not hired_agent_query.scalar_one_or_none():
-            raise ValueError('This offer is not from an active agent hired by this customer.')
+        cached_job = CachedClientJob.model_validate_json(cached_job_value)
     except Exception as error:
-        raise HTTPException(
-            status_code=400,
-            detail='This job offer is invalid or is not from an active hired agent.'
-        ) from error
+        raise HTTPException(status_code=400, detail='The cached job offer is invalid.') from error
+
+    if cached_job.offer_id != offer_id or cached_job.customer_id != customer.id:
+        raise HTTPException(status_code=400, detail='This job offer does not belong to this customer.')
+
+    if cached_job.agent_id != agent_id:
+        raise HTTPException(status_code=400, detail='This job offer does not belong to the selected agent.')
+
+    if not queued_jobs or queued_jobs[0] != cached_job_value:
+        raise HTTPException(status_code=409, detail='This offer is queued behind another job.')
+
+    # Verify the active hire and current job state before charging the customer.
+    try:
+        hired_agent_query = await session_db.execute(select(HiredAgent).where(and_(
+            HiredAgent.id == cached_job.agent_id,
+            HiredAgent.customer_id == customer.id,
+            HiredAgent.agent_state == AgentState.ACTIVE,
+        )))
+        hired_agent = hired_agent_query.scalar_one_or_none()
+        if not hired_agent:
+            raise ValueError('This offer is not from an active hired agent.')
+
+        active_job_query = await session_db.execute(select(AgentJob).where(and_(
+            AgentJob.hired_agent_id == hired_agent.id,
+            AgentJob.customer_id == customer.id,
+            AgentJob.job_state == AgentJobState.ACTIVE,
+        )))
+        if active_job_query.scalar_one_or_none():
+            raise ValueError('This agent is already working on a job.')
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    except Exception as error:
+        raise HTTPException(status_code=500, detail='Unable to validate this job offer.') from error
 
     #calling stripe api for payments 
     try:
         payment_success = customer_payment_for_job(
-            cached_job=cached_job_dict,
+            cached_job=cached_job,
             customer_payment=customer_payment,
             stripe_api_key=stripe_api_key,
-            idempotency_key='pine-' + hashlib.sha256(
-                f'{customer.id}:{offer_id}:{customer_payment.stripe_payment_id}'.encode('utf-8')
-            ).hexdigest()
+            idempotency_key=str(uuid5(
+                NAMESPACE_URL,
+                f'pine:{customer.id}:{offer_id}:{customer_payment.stripe_payment_id}',
+            )),
         )
     except Exception:
         raise HTTPException(
@@ -228,7 +241,8 @@ async def customer_job_payment(payment_id_str:str,
         agent_job = await create_agents_new_job(
             session_db,
             customer,
-            cached_job_dict
+            cached_job,
+            hired_agent,
         )
         await create_new_job_payment(
             session_db,
@@ -247,32 +261,24 @@ async def customer_job_payment(payment_id_str:str,
             exp_time=86400
         )
     except Exception as error:
-        try:
-            await cache_db.delete(key=f'pending-job/{customer.id}/{offer_id}')
-        except Exception:
-            pass
         raise HTTPException(
             status_code=500,
             detail='Payment and job were saved, but Pine could not record the offer result. Check activity before retrying.'
         ) from error
 
-    # Keep declined offers available; consume successful offers after durable records exist.
+    # Remove only the paid offer, leaving the customer's other queued jobs intact.
     try:
-        await cache_db.delete(key=f'pending-job/{customer.id}/{offer_id}')
-    except Exception:
-        # Stripe's idempotency key protects the charge if Redis is unavailable.
-        pass
+        removed_jobs = await cache_db.remove_list_item(queue_key, cached_job_value)
+        if removed_jobs != 1:
+            raise RuntimeError('The paid offer was not present in the pending queue.')
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail='Payment and job were saved, but Pine could not remove the paid offer from its queue.'
+        ) from error
 
     #getting the agents url for request
     try:
-        hired_agent_query = await session_db.execute(select(HiredAgent).where(and_(
-            HiredAgent.id == agent_job.hired_agent_id,
-            HiredAgent.customer_id == customer.id,
-            HiredAgent.agent_state == 'active'
-        )))
-        hired_agent = hired_agent_query.scalar_one_or_none()
-        if not hired_agent:
-            raise ValueError('Hired agent not found for this customer.')
         agent:Agent = await get_hired_agent_url(session_db, hired_agent)
     except Exception:
         raise HTTPException(

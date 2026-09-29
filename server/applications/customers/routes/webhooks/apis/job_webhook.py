@@ -5,10 +5,8 @@ from fastapi import Depends
 from server.dependencies import (
     get_relational_db_session,
     get_notifications_events,
-    get_server_key,
     get_cache_db,
-    get_async_http,
-    get_job_webhook_url
+    get_jobs_events,
 )
 from server.models.users.merchants import Merchant
 from server.models.auths.api_auth import MerchantAPI
@@ -22,7 +20,8 @@ from server.models.notifications.notification_message import (
     NotificationType
 )
 from server.applications.customers.schemas.webhooks.webhook_schema import (
-    AgentCompletedJob
+    AgentCompletedJob,
+    CachedClientJob,
 )
 from server.applications.customers.services.webhooks.webhook_service import (
     get_merchants_api_model,
@@ -30,18 +29,19 @@ from server.applications.customers.services.webhooks.webhook_service import (
     get_merchant,
     create_job_notification_header,
     create_job_notification_message,
-    send_cached_job,
     ensure_merchant_owns_job,
     NotificationMessageType
 )
-from server.config.apis import NotificationEvents
+from server.config.apis import IncomingJobsEvents, NotificationEvents
 from server.config.database import CacheDatabase
 from sqlalchemy.ext.asyncio import AsyncSession
-from aiohttp import ClientSession
 from sqlalchemy import select, and_
 from typing import Annotated
 from datetime import datetime, timezone
 from uuid import UUID
+from server.applications.customers.services.pages.home_service import (
+    get_pending_job_queue_key,
+)
 
 customer_api_webhook_router = APIRouter(prefix='/customer/webhooks', tags=['Router for the apis webhooks'])
 
@@ -52,10 +52,8 @@ async def update_customer_job(merchant_api_model:Annotated[MerchantAPI, Depends(
                               agent_completed_job:AgentCompletedJob,
                               session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
                               events_manager:Annotated[NotificationEvents, Depends(get_notifications_events)],
-                              WEBHOOK_URL:Annotated[str, Depends(get_job_webhook_url)],
-                              pine_server_key:Annotated[str, Depends(get_server_key)],
                               cache_db:Annotated[CacheDatabase, Depends(get_cache_db)],
-                              http_client:Annotated[ClientSession, Depends(get_async_http)]):
+                              job_events:Annotated[IncomingJobsEvents, Depends(get_jobs_events)]):
     #checking the signature from client 
     if not merchant_api_model.check_signature(
         data=agent_completed_job.model_dump_json(),
@@ -174,20 +172,36 @@ async def update_customer_job(merchant_api_model:Annotated[MerchantAPI, Depends(
             detail='Database error. Unable to operate database.'
         )
 
-    #making request to ensure that
+    # A completed job frees this agent to present the next queued offer.
     try:
-        await send_cached_job(
-            cache_key = f'{str(agent_job.customer_id)}/{agent_job.hired_agent_name}',
-            cache_db=cache_db,
-            http_client=http_client,
-            url_request=WEBHOOK_URL,
-            pine_server_key=pine_server_key
-        )
-    except Exception:
+        queue_key = get_pending_job_queue_key(agent_job.customer_id, agent_job.hired_agent_id)
+        queued_jobs = await cache_db.retrieve_lst(queue_key)
+
+        # Skip an already-paid item if a previous queue cleanup failed.
+        while queued_jobs:
+            next_job = CachedClientJob.model_validate_json(queued_jobs[0])
+            processed_offer = await cache_db.retrieve(
+                key=f'paid-job-offer/{agent_job.customer_id}/{next_job.offer_id}'
+            )
+            if not processed_offer:
+                break
+
+            await cache_db.remove_list_item(queue_key, queued_jobs[0])
+            queued_jobs = await cache_db.retrieve_lst(queue_key)
+
+        if queued_jobs:
+            next_job = CachedClientJob.model_validate_json(queued_jobs[0])
+            await job_events.event_set(
+                data={
+                    'customer_id': str(agent_job.customer_id),
+                    'customer_data': next_job.model_dump(mode='json'),
+                }
+            )
+    except Exception as error:
         raise HTTPException(
-            status_code=400,
-            detail='Unable to send webhook request from webhook.'
-        )
+            status_code=500,
+            detail='The job is complete, but Pine could not publish the next queued offer.'
+        ) from error
 
     #setting the event for notification
     noti_data_dict = {

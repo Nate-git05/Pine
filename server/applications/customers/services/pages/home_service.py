@@ -10,6 +10,7 @@ from server.models.activities.jobs.agent_job import (
 from server.models.users.customers import Customer
 from server.models.agents.hired_agent import HiredAgent
 from server.models.agents.agent import Agent
+from server.applications.customers.schemas.webhooks.webhook_schema import CachedClientJob
 from server.models.activities.transactions.job_payments import JobPayments
 from server.models.notifications.notification_message import Notification
 from server.applications.customers.schemas.pages.home_schemas import IndividualNotification
@@ -18,6 +19,11 @@ from sqlalchemy import select, and_
 import stripe
 from datetime import datetime, timezone
 from uuid import UUID
+
+
+def get_pending_job_queue_key(customer_id: UUID | str, hired_agent_id: UUID | str) -> str:
+    """Build the Redis list key for one customer's hired-agent queue."""
+    return f'{customer_id}/{hired_agent_id}'
 
 #Helper function -> loops through payments lst creates -> stores pydantic model
 def get_returned_payments_lst(payments_lst:list[StripePayment], stripe_api_key:str):
@@ -50,13 +56,13 @@ def get_returned_payments_lst(payments_lst:list[StripePayment], stripe_api_key:s
     return returned_lst #returning the lst of pydantic payments 
 
 #helper function to pay for the job
-def customer_payment_for_job(cached_job:dict, customer_payment:StripePayment, stripe_api_key:str,
+def customer_payment_for_job(cached_job:CachedClientJob, customer_payment:StripePayment, stripe_api_key:str,
                              idempotency_key:str | None = None):
     #starting the stripe payment
     try:
         payment_intet = stripe.PaymentIntent.create(
             api_key=stripe_api_key,
-            amount=cached_job.get('job_price'),
+            amount=cached_job.job_price,
             currency='usd',
             customer=customer_payment.stripe_customer_id,
             payment_method=customer_payment.stripe_payment_id,
@@ -72,25 +78,16 @@ def customer_payment_for_job(cached_job:dict, customer_payment:StripePayment, st
 #creating the agents new job 
 async def create_agents_new_job(session_db:AsyncSession, 
                                 customer:Customer,
-                                cached_job:dict):
-    try:
-        hired_agent_query = await session_db.execute(select(HiredAgent).where(and_(
-            HiredAgent.agent_id == UUID(cached_job.get('agent_id')),
-        HiredAgent.customer_id == customer.id,
-        HiredAgent.agent_state == 'active'
-        )))
-        hired_agent = hired_agent_query.scalar_one_or_none() #getting the agent from customer id and the agents id
-    except Exception as err:
-        raise err
-
-    if not hired_agent:
+                                cached_job:CachedClientJob,
+                                hired_agent:HiredAgent):
+    if hired_agent.customer_id != customer.id or hired_agent.id != cached_job.agent_id:
         raise ValueError('The hired agent for this job could not be found.')
 
     #building sql model for the new job
     agent_new_job = AgentJob(
-        job_name=cached_job.get('job_name'),
-        job_description=cached_job.get('job_description'),
-        job_price=cached_job.get('job_price'),
+        job_name=cached_job.job_name,
+        job_description=cached_job.job_description,
+        job_price=cached_job.job_price,
         job_state=AgentJobState.ACTIVE,
         hired_agent_id=hired_agent.id,
         customer_id=hired_agent.customer_id,
@@ -163,4 +160,4 @@ def get_notification_returned(customer_notifications:list[Notification]):
 
         returned_lst.append(returned_notification) #appending the notification to lst
 
-    return returned_lst #returning lst 
+    return returned_lst #returning lst
