@@ -6,7 +6,7 @@ This branch contains a FastAPI customer backend under `server/`. The `client/` d
 
 ## How the server is organized
 
-- `app.py` owns dependency getters, the FastAPI lifespan, shared clients, and customer route registration.
+- `app.py` creates the FastAPI app and registers customer routers. `lifespan.py` owns startup and shutdown of shared clients and application state. `dependencies.py` contains request-scoped getters for that shared state.
 - `config/` builds the Postgres, Redis, and Qdrant adapters and loads environment settings.
 - `applications/customers/routes/` contains auth, agent search/hire, payment, activity, notification, GraphQL, and webhook endpoints.
 - `applications/customers/services/` contains shared customer operations.
