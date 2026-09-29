@@ -1,16 +1,14 @@
-# Customer activity routes
+# Customer activity REST routes
 
-The activity REST handlers return one job/request or accept a rating/request response. Activity lists are GraphQL at `POST /customer/activity`.
+These customer-authenticated handlers share `/customer/activity` with the activity GraphQL router. The main [server guide](../../../../../../README.md#4-agent-callbacks-activity-and-notifications) explains how agent callbacks produce activity records.
 
-## REST endpoints
+| Method and path | Behavior |
+| --- | --- |
+| `GET /jobs/{job_id}` | Return one job owned by the current customer, including details, summary, agent, dollar price, and applicable timestamps. |
+| `POST /job/rating/{job_id}` | Set a rating only when the customer's job is complete and not previously rated. The schema does not validate a numeric range. |
+| `GET /jobs/requests/{request_id}` | Return one request owned by the customer. |
+| `POST /request/answer/{request_id}` | Validate a non-empty response up to 150 characters, post it to the agent's webhook, and mark the request handled after an accepted callback. |
 
-- `GET /customer/activity/jobs/{job_id}` returns a customer-owned job.
-- `POST /customer/activity/job/rating/{job_id}` accepts a rating only for a completed, unrated job.
-- `GET /customer/activity/jobs/requests/{request_id}` returns a customer-owned agent request.
-- `POST /customer/activity/request/answer/{request_id}` sends a non-empty response (up to 150 characters) to the hired agent, then marks the request handled after the callback succeeds.
+Activity lists are GraphQL fields at `POST /customer/activity` (`jobRequests`, `activeJobs`, `completedJobs`, and `customerJobPayments`), not REST list routes. Response types are in `applications/customers/schemas/pages/activities_schema.py`.
 
-## GraphQL list pagination
-
-The query fields are `jobRequests(limit)`, `activeJobs(limit)`, `completedJobs(limit)`, and `customerJobPayments(limit)`. Send request-level `cursor` and `last_id_seen` values with the GraphQL request JSON. `cursor` is a boolean; `last_id_seen` is the prior response's list-specific timestamp encoded as ISO-8601. The context getter casts that value to a `datetime`. Each resolver combines it with customer and state predicates and the appropriate time condition; it fetches one extra row to set the returned `cursor` only when more results exist.
-
-The request-level cursor/time pair is shared by selected fields, so request one paginated list at a time. The response timestamp fields are `lastRequestDate`, `lastJobDate`, and `lastPaymentDate` after Strawberry camel-casing.
+For list pagination, send request-level `cursor` and `last_id_seen` values (or put them in GraphQL `variables`). The auth context validates the request with `CustomerContextRequest`, parses the timestamp, and passes both values to the resolvers. Each list uses its own timestamp field and ordering, fetches one extra row to report whether another page exists, and returns the last timestamp from the current page. Request one paginated activity list at a time because the context cursor is shared across selected fields.

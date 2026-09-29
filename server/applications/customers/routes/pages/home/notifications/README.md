@@ -1,7 +1,17 @@
 # Customer notification delivery
 
-`NotificationEvents` is dedicated to notification updates; `IncomingJobsEvents` is separate for proposed agent jobs. Each manager routes events to a per-customer queue and event using the payload's `customer_id`. The notification stream at `GET /customer/notifications/events` and the incoming-job stream at `GET /customer/webhooks/client/event` authenticate the customer, wait on that customer's event, dequeue a payload, and check its `customer_id` against the authenticated customer before yielding it. This inner check is a second guard; the per-customer queue already separates normal event delivery.
+Customer notification records are stored in Postgres. The list and update routes are registered in `app.py`; they share the `/customer/notifications` prefix with the notification SSE endpoint.
 
-The event is a wake-up signal and the queue holds payloads. When a customer queue still has items, the event stays set so the stream can drain them; it is cleared after the queue becomes empty. Notification producers include customer ID plus `customer_noti` (`noti_id`, `noti_header`, `noti_message`, and `noti_type`). The SSE response returns the notification type as `notification_type`. Incoming-offer producers include customer ID plus `customer_data` and a unique `offer_id`. Events are process-local, so separate server workers do not share them. Use shared pub/sub fanout before running multiple workers.
+## Notification history
 
-The notification page is loaded with GraphQL at `/customer/notifications`; it returns unread notifications in descending creation order, up to the requested limit, with a timestamp cursor for the next page. `GET /customer/notifications/{notification_id}` returns one notification owned by the signed-in customer and marks it read. `PATCH /customer/notifications/clear` marks all of that customer's unread notifications as read. The SSE router is registered before the REST router so `/events` is handled by the stream route, not the REST ID route.
+- The GraphQL route at `POST` or `GET /customer/notifications` returns unread notifications newest-first. It accepts a `limit` (bounded to 1–50), fetches one extra row to set `cursor`, and returns the timestamp of the last displayed notification. Send `cursor` and `last_seen` with the next request; the auth context also accepts `last_id_seen`.
+- `GET /customer/notifications/{notification_id}` returns the matching notification only when it belongs to the signed-in customer. Reading an unread notification changes its state to `read` and sets `read_at`.
+- `PATCH /customer/notifications/clear` marks all unread notifications for the signed-in customer as read and sets `read_at`. It does not clear only the current GraphQL page.
+
+## Live events
+
+`NotificationEvents` is separate from `IncomingJobsEvents`. Each manager routes to a queue and `asyncio.Event` keyed by customer ID. Notification producers persist the row before queueing an event containing `customer_id` and `customer_noti` (`noti_id`, `noti_header`, `noti_message`, and `noti_type`). The SSE response sends the ID, header, message, and type. The stream checks the event's customer ID against the authenticated customer before yielding it.
+
+The event is a wake-up signal and the queue holds payloads. The event remains set while that customer's queue has items and is cleared when it becomes empty. Events are process-local; multiple workers do not share them, and a disconnected client cannot replay missed events from SSE. Use a shared broker and durable replay/outbox design before relying on multi-worker delivery.
+
+For the full customer lifecycle and failure boundaries, see the [server guide](../../../../../../README.md#4-agent-callbacks-activity-and-notifications).

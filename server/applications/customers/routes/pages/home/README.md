@@ -1,11 +1,16 @@
 # Customer home and payment routes
 
-`customer_payment.py` owns saved-card listing, per-job payment, and Stripe Checkout card setup. This pass added a real empty-card response, replaced several blank details, fixed the Stripe customer ID and payment status fields, and changed Checkout to setup mode so the returned SetupIntent can identify the saved PaymentMethod. Job delivery now signs the serialized payload as a hex digest and looks up the hired agent using the customer-owned hire record.
+The `/customer/home` router is declared in `agent_chat.py`; despite that filename, the module currently contains no chat endpoints. `customer_payment.py` attaches payment handlers to it. The end-to-end offer-to-payment sequence and recovery limits are documented in [`server/README.md`](../../../../../README.md#3-job-offer-saved-card-payment-and-dispatch).
 
-Review payment reconciliation, refunds, and durable recovery across the Stripe/database/webhook boundary. External payment and delivery behavior was not exercised.
+## Current handlers
 
-Card setup now builds Stripe return URLs from the request host and reuses the customer's Stripe Customer when possible. The Stripe success callback validates the checkout customer, successful SetupIntent, and exact PaymentMethod before saving it. Card list responses retrieve metadata for that exact saved PaymentMethod. The payment path accepts the `offer_id` emitted by the incoming-job SSE event.
+- `GET /cards`: return saved Pine card IDs and display metadata. Stripe is queried for each stored PaymentMethod; raw Stripe IDs are not the client selector.
+- `POST /payment/add`: create Stripe Checkout setup mode and return its URL.
+- `GET /payment/add/success` and `/payment/add/failed`: handle the Stripe browser return and save a verified setup PaymentMethod on success.
+- `POST /payment/{payment_id}/{offer_id}`: lock and validate the customer's selected card and offer, charge off-session through Stripe, create job/payment records, forward the job to the agent, persist notifications, then publish a customer notification event.
 
-Payment requests are serialized by a short Redis lock per customer/offer, and a successful offer result is cached to make sequential retries return without creating another job. Update the frontend to submit the SSE `offer_id` instead of the agent name in the payment URL.
+The incoming offer SSE has a Pine-generated `offer_id`; it must be used in the payment path. Offer data expires from Redis after 15 minutes. A Redis lock and Stripe idempotency key help prevent duplicate work, but the charge, separate database commits, agent callback, and notification publication are not one atomic transaction. Post-charge errors require checking Activity before retrying; there is no reconciliation/outbox or refund route in this code.
 
-The signed job request sent to the hired agent includes the customer's `agent_restrictions` list from the `HiredAgent` record. Customer notification SSE data now includes the notification type as `notification_type`, alongside its ID, header, and message.
+The signed request sent to the hired agent includes the job fields and that hire's `agent_restrictions`, which is the customer's working scope for the agent. The customer notification event sent after payment contains its ID, header, message, and notification type.
+
+See [home schemas](../../../schemas/pages/home_schemas.py) and the [client payment integration guide](../../../../../../client/mobile/routes/payment/README.md) for response contracts.
