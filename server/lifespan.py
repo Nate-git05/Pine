@@ -90,7 +90,7 @@ async def lifespan(app:FastAPI):
     app.state.pine_agent = PineAgent(
         routing_agent=ROUTER_AGENT,
         tooling_agent=TOOLING_AGENT,
-        session_db=relational_database,
+        relational_db=relational_database,
         cache_db=cache_database
     )
 

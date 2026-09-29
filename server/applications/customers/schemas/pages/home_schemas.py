@@ -2,12 +2,11 @@
 from pydantic import (
     BaseModel,
     field_validator,
-    model_validator
+    Field,
 )
 import strawberry
 from datetime import datetime
 from server.models.notifications.notification_message import NotificationType
-import re
 
 #Schema for the returned stripe payment
 class ReturnedPayments(BaseModel):
@@ -50,34 +49,20 @@ class NotificationsCleared(BaseModel):
 
 #Schema for the customer request for agent chat
 class AgentChatRequest(BaseModel):
-    customer_message:str | None = None 
+    customer_message: str = Field(min_length=1)
 
-    #validating the field 
+    # Strip surrounding whitespace and reject empty chat messages.
     @field_validator('customer_message')
     @classmethod
-    def message_check(message:str) -> str:
-        message = message.strip() #stripping/leading whitespace 
+    def message_check(cls, message: str) -> str:
+        message = message.strip()
         if not message:
-            raise ValueError('')
-
-        #checking the contents of the message 
-        pattern = r''
-        if re.match(pattern, message):
-            raise ValueError('')
-        
+            raise ValueError('The customer message cannot be empty.')
         return message
-
-    #validating the model 
-    @model_validator(mode='after')
-    def customer_chat_check(self):
-        if not self.customer_message:
-            raise ValueError('')
-
-        return self #returns the schema
 
 #Schema for the response from chat route 
 class AgentChatResponse(BaseModel):
-    response:str = None 
+    response: str
 
 """GraphQl schemas for responses"""
 #Schema for the individual notification returned
