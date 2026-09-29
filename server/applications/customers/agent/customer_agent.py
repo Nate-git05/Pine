@@ -18,8 +18,9 @@ class MessageType(StrEnum):
     SUPPORT='support'
 
 #Formated output for routing agent
-class RoutingAgentOutput(BaseModel):
-    message_type:MessageType = None 
+class AgentOutput(BaseModel):
+    message_type:MessageType | None = None 
+    response:str | None = None 
 
 #Defining the message for the agent 
 @dataclass
@@ -52,9 +53,9 @@ class PineAgent:
         self.routing_agent = routing_agent
         self.tooling_agent = tooling_agent
 
-        #map attributes 
+        #data structures attributes  
         self.skill_file_map = {}
-        self.agent_tool_map = {}
+        self.agent_tool_lst = []
 
     #Method to retrieve the skill for the agent 
     def get_agent_skill(self, message_type:MessageType | None = None, router:bool | None =None):
@@ -91,7 +92,7 @@ class PineAgent:
             name=router_agent,
             prompt=router_skill,
             model=self.routing_agent,
-            output_type=RoutingAgentOutput
+            output_type=AgentOutput
         )
 
         #running the agent on customer message 
@@ -111,3 +112,37 @@ class PineAgent:
             message=customer_message
         )
         return tooling_agent_message #returning the agent's message 
+
+    #creating the tooling agent 
+    async def run_tooling_agent(self, 
+                                agent_message:AgentMessage,
+                                agent_name:str='tooling_agent'):
+        try:
+            agent_skill = self.get_agent_skill(
+                message_type=agent_message.message_type,
+                router=None
+            )
+        except Exception as error:
+            raise error 
+
+        #creating the tooling agent 
+        tooling_agent = Agent(
+            name=agent_name,
+            model=self.tooling_agent,
+            instructions=agent_skill,
+            tools=self.agent_tool_lst,
+            output_type=AgentOutput
+        )
+
+        #running the tool agent 
+        try:
+            result = await Runner.run(
+                tooling_agent,
+                agent_message.message
+            )
+        except Exception as error:
+            raise error 
+
+        #getting agent response 
+        agent_response:AgentOutput = result.final_output
+        return agent_response
