@@ -44,13 +44,13 @@ async def chat_with_hired_agent(customer_info: AgentChatRequest,
                                 session_db: Annotated[AsyncSession, Depends(get_relational_db_session)],
                                 cache_db: Annotated[CacheDatabase, Depends(get_cache_db)],
                                 pine_agent: Annotated[PineAgent, Depends(get_server_agent)]):
-    # Parse the customer-specific hire ID from the chat path.
+    #Parse the customer-specific hire ID from the chat path.
     try:
         hired_agent_id = UUID(hired_agent_id_str)
     except ValueError as error:
         raise HTTPException(status_code=400, detail='Invalid hired-agent ID.') from error
 
-    # Verify that this customer owns an active hire before loading its history.
+    #Verify that this customer owns an active hire before loading its history.
     try:
         hired_agent_query = await session_db.execute(select(HiredAgent).where(and_(
             HiredAgent.id == hired_agent_id,
@@ -64,7 +64,7 @@ async def chat_with_hired_agent(customer_info: AgentChatRequest,
     if not hired_agent:
         raise HTTPException(status_code=404, detail='No active hired agent was found for this customer.')
 
-    # Separate router and tooling histories for this customer and hired agent.
+    #Separate router and tooling histories for this customer and hired agent.
     cache_key_router = f'{customer.id}/{hired_agent.id}/router'
     cache_key_tooling = f'{customer.id}/{hired_agent.id}/tooling'
 
@@ -116,7 +116,7 @@ async def chat_with_hired_agent(customer_info: AgentChatRequest,
         # Store only serializable conversation text in the tooling history.
         tooling_turn = return_tooling_agent_context(
             customer_message=customer_info.customer_message,
-            agent_response=agent_response.response,
+            agent_response=agent_response,
         )
         await pine_agent.store_context(
             cache_key=cache_key_tooling,
@@ -125,7 +125,7 @@ async def chat_with_hired_agent(customer_info: AgentChatRequest,
             cache_db=cache_db,
         )
 
-        return AgentChatResponse(response=agent_response.response)
+        return AgentChatResponse(response=agent_response)
     except AgentConfigurationError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
     except HTTPException:

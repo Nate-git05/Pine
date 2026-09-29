@@ -59,6 +59,19 @@ class AgentType(StrEnum):
     ROUTER='router'
     TOOLING='tooling'
 
+
+# Keep each routing class connected to its matching tooling instructions.
+SKILL_DIRECTORY = Path(__file__).parent / 'skills'
+DEFAULT_SKILL_FILE_MAP: dict[MessageType | str, Path] = {
+    'router': SKILL_DIRECTORY / 'router.md',
+    MessageType.JOBCREATION: SKILL_DIRECTORY / 'job_creation.md',
+    MessageType.CONVERSATION: SKILL_DIRECTORY / 'conversation.md',
+    MessageType.INFORMATIVE: SKILL_DIRECTORY / 'informative.md',
+    MessageType.HARMFUL: SKILL_DIRECTORY / 'harmful.md',
+    MessageType.SUPPORT: SKILL_DIRECTORY / 'support.md',
+    MessageType.UNKNOWN: SKILL_DIRECTORY / 'unknown.md',
+}
+
 """Defining the Pine Agent model"""
 class PineAgent:
     def __init__(self, 
@@ -74,8 +87,10 @@ class PineAgent:
         self.relational_db = relational_db
         self.cache_db = cache_db
 
-        # Skills and tools can be added as their implementations are completed.
-        self.skill_file_map = skill_file_map or {}
+        # Keep tool implementations optional while their files are being built.
+        self.skill_file_map = (
+            skill_file_map if skill_file_map is not None else DEFAULT_SKILL_FILE_MAP.copy()
+        )
         self.agent_tool_lst = agent_tool_lst or []
 
     # Read the agent's full conversation context without consuming the Redis list.
@@ -125,7 +140,7 @@ class PineAgent:
 
         return get_skill_content(Path(skill_path))
 
-    # Classify the new customer message before selecting a tooling skill.
+    #Classify the new customer message before selecting a tooling skill.
     async def run_router_agent(self,
                                router_message: str,
                                agent_name: str = 'router_agent') -> MessageType:
@@ -144,10 +159,10 @@ class PineAgent:
         agent_result = await Runner.run(router_agent, router_message)
         return agent_result.final_output.message_type
 
-    # Run the selected skill with the customer's conversation context.
+    #Run the selected skill with the customer's conversation context.
     async def run_tooling_agent(self,
                                 agent_message: AgentMessage,
-                                agent_name: str = 'tooling_agent') -> AgentOutput:
+                                agent_name: str = 'tooling_agent') -> str:
         if not self.tooling_agent:
             raise AgentConfigurationError('The tooling agent model is not configured.')
 
@@ -162,4 +177,4 @@ class PineAgent:
         )
 
         result = await Runner.run(tooling_agent, agent_message.message)
-        return result.final_output
+        return result.final_output.response
