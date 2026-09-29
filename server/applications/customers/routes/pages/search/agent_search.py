@@ -3,7 +3,7 @@ from fastapi.routing import APIRouter
 from fastapi.exceptions import HTTPException
 from fastapi import Depends
 from server.applications.customers.services.auth.auth_service import get_current_customer
-from server.app import (
+from server.dependencies import (
     get_relational_db_session,
     get_vector_database,
     get_openai_client

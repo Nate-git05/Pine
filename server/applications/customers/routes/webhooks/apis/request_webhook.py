@@ -2,7 +2,7 @@
 from fastapi.exceptions import HTTPException
 from fastapi import Depends
 from server.applications.customers.routes.webhooks.apis.job_webhook import customer_api_webhook_router
-from server.app import (
+from server.dependencies import (
     get_relational_db_session,
     get_notifications_events
 )
@@ -119,7 +119,8 @@ async def create_cusotmer_job_request(merchant_api_model:Annotated[MerchantAPI, 
         'customer_noti':{
             'noti_id':str(customer_notification.id),
             'noti_header':customer_notification.notification_header,
-            'noti_message':customer_notification.notification_message
+            'noti_message':customer_notification.notification_message,
+            'noti_type':customer_notification.notification_type
         }
     }
 

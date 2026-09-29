@@ -3,7 +3,7 @@ from fastapi.exceptions import HTTPException
 from fastapi import Depends
 from server.applications.customers.services.auth.auth_service import get_current_customer
 from server.applications.customers.routes.pages.search.agent_search import customer_search_router
-from server.app import (
+from server.dependencies import (
     get_relational_db_session
 )  
 from server.models.users.customers import Customer

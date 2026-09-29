@@ -3,7 +3,7 @@ from fastapi.routing import APIRouter
 from fastapi.exceptions import HTTPException
 from fastapi import Depends
 from server.applications.customers.services.auth.auth_service import get_current_customer
-from server.app import (
+from server.dependencies import (
     get_relational_db_session,
     get_async_http
 )
@@ -150,6 +150,8 @@ async def customer_answer_requst(request_id_str:str,
             #ensuring response was successful
             if (agent_server_response.status < 200) or (agent_server_response.status >= 300):
                 raise Exception('Status for request was bad.')
+
+            #updating the sql model for the job request 
             customer_request.customer_request_response = customer_info.customer_response
             customer_request.job_request_state = JobRequestState.HANDLED
             customer_request.handled_at = datetime.now(timezone.utc)

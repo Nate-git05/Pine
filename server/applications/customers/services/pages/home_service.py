@@ -11,6 +11,8 @@ from server.models.users.customers import Customer
 from server.models.agents.hired_agent import HiredAgent
 from server.models.agents.agent import Agent
 from server.models.activities.transactions.job_payments import JobPayments
+from server.models.notifications.notification_message import Notification
+from server.applications.customers.schemas.pages.home_schemas import IndividualNotification
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 import stripe
@@ -144,3 +146,21 @@ async def create_new_job_payment(session_db:AsyncSession, agent_job:AgentJob):
         await session_db.rollback()
         raise error
     return new_job_payment
+
+#Helper fucntion -> reads from customer notis list -> stores in strawberry avaliable field 
+def get_notification_returned(customer_notifications:list[Notification]):
+    returned_lst = [] #lst returning the notifications 
+
+    #looping through the notifications
+    for notification in customer_notifications:
+        returned_notification = IndividualNotification(
+            noti_id=str(notification.id),
+            noti_header=notification.notification_header,
+            noti_message=notification.notification_message,
+            noti_type=notification.notification_type,
+            notification_date=notification.created_at.strftime("%b %d, %Y")
+        )
+
+        returned_lst.append(returned_notification) #appending the notification to lst
+
+    return returned_lst #returning lst 

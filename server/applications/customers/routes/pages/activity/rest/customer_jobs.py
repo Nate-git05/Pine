@@ -3,7 +3,7 @@ from fastapi.routing import APIRouter
 from fastapi.exceptions import HTTPException
 from fastapi import Depends
 from server.applications.customers.services.auth.auth_service import get_current_customer
-from server.app import get_relational_db_session
+from server.dependencies import get_relational_db_session
 from server.models.users.customers import Customer
 from server.models.activities.jobs.agent_job import (
     AgentJob,
@@ -11,7 +11,6 @@ from server.models.activities.jobs.agent_job import (
 )
 from server.models.activities.jobs.job_request import AgentJobRequest
 from server.applications.customers.schemas.pages.activities_schema import (
-    IndividualJobRequest,
     IndividualJob,
     CustomerJobRating,
     RatingResponse

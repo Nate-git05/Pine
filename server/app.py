@@ -1,6 +1,5 @@
 #File for starting up the application for the server
 from fastapi import FastAPI
-from fastapi.requests import Request
 from server.config.configuration import (
     PINENUMBER,
     POSTGRES_URI,
@@ -25,60 +24,8 @@ from server.config.apis import (
     IncomingJobsEvents
 )
 from contextlib import asynccontextmanager
-from pydantic_extra_types.phone_numbers import PhoneNumber
 import aiohttp
 from redis.asyncio import RedisError
-
-#getter functions for retrieving app states
-async def get_relational_db_session(request:Request):
-    relational_database:RelationalDatabase = request.app.state.relational_database
-
-    #looping through database to retriev session
-    async for session in relational_database.get_db():
-        yield session
-
-def get_cache_db(request:Request):
-    return request.app.state.cache_database
-
-def get_vector_database(request:Request):
-    return request.app.state.vector_database
-
-#getting the server's api clients 
-def get_twilio_client(request:Request):
-    api_wrapper:APIWrapper = request.app.state.api_wrapper
-
-    return api_wrapper.configure_twilio_api() #returns client
-
-def get_openai_client(request:Request):
-    api_wrapper:APIWrapper = request.app.state.api_wrapper
-
-    return api_wrapper.configure_openai_api()
-
-def get_notifications_events(request:Request):
-    return request.app.state.notifications_event
-
-#getting the servers incoming jobs events
-def get_jobs_events(request:Request):
-    return request.app.state.jobs_event
-
-#getting the server's secret key
-def get_server_key(request:Request):
-    return request.app.state.server_key
-
-#getting the server's number 
-def get_servers_number(request:Request):
-    return PhoneNumber(request.app.state.server_number)
-
-#getting the server's async client for http requests 
-async def get_async_http(request:Request):
-    return request.app.state.http_client
-
-def get_job_webhook_url(request:Request):
-    return request.app.state.job_webhook_url
-
-#getting stripes api key
-def get_stripe_api_key(request:Request):
-    return request.app.state.stripe_api_key
 
 #app's lifespan function -> configures the servers attributes at startup time
 @asynccontextmanager
@@ -161,8 +108,7 @@ async def lifespan(app:FastAPI):
 #Initialzing the app 
 app = FastAPI(lifespan=lifespan)
 
-# Register customer routes after defining dependency getters to avoid import
-# cycles: route modules depend on the getters above.
+# Register customer routes after creating the app to avoid import cycles.
 from server.applications.customers.routes.auth.signup import customer_auth_router
 from server.applications.customers.routes.auth import login as _customer_login_routes
 from server.applications.customers.routes.auth import verify as _customer_verify_routes
@@ -172,6 +118,8 @@ from server.applications.customers.routes.pages.search import hire_agent as _cus
 from server.applications.customers.routes.pages.activity.rest.customer_jobs import customer_activity_router as customer_jobs_router
 from server.applications.customers.routes.pages.activity.rest.customer_requests import customer_activity_router as customer_requests_router
 from server.applications.customers.routes.pages.home.notifications.notifications_sse import customer_sse_router
+from server.applications.customers.routes.pages.home.notifications.graphql.notifications_page import notifications_page_router
+from server.applications.customers.routes.pages.home.notifications.rest.notification_routes import customer_notification_router
 from server.applications.customers.routes.webhooks.apis.job_webhook import customer_api_webhook_router
 from server.applications.customers.routes.webhooks.apis import client_webhook as _client_webhook_routes
 from server.applications.customers.routes.webhooks.apis import request_webhook as _request_webhook_routes
@@ -180,6 +128,7 @@ from server.applications.customers.routes.pages.activity.graphql.activity_page i
 for router in (
     customer_auth_router, customer_home_router, customer_search_router,
     customer_jobs_router, customer_requests_router, customer_sse_router,
+    customer_notification_router, notifications_page_router,
     customer_api_webhook_router, activity_page_graphql_router,
 ):
     app.include_router(router)

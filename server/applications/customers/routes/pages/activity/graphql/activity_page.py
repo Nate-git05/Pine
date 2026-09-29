@@ -36,12 +36,12 @@ from datetime import datetime
 class ActivityPageQuery:
     #field for the client side query -> job requests 
     @strawberry.field()
-    async def job_requests(self, customer_context:Info, limit:int=5,
-                           last_request_date:datetime | None=None):
+    async def job_requests(self, customer_context:Info, limit:int=5):
         try:
             customer:Customer = customer_context.context.get('customer')
             session_db:AsyncSession = customer_context.context.get('database_session')
-            last_request_made = last_request_date
+            cursor:bool = customer_context.context.get('cursor', False)
+            last_id_seen:datetime | None = customer_context.context.get('last_id_seen')
         except Exception:
             return HTTPException(
                 status_code=400,
@@ -50,17 +50,17 @@ class ActivityPageQuery:
 
         #database query -> job requests 
         try:
-            if last_request_made:
+            if cursor:
                 job_requests_query = await session_db.execute(select(AgentJobRequest).where(and_(
                     AgentJobRequest.customer_id == customer.id,
                     AgentJobRequest.job_request_state == JobRequestState.NOT_HANDLED,
-                    AgentJobRequest.request_made_at < last_request_made
-                )).order_by(desc(AgentJobRequest.request_made_at)).limit(limit=limit))
+                    AgentJobRequest.request_made_at < last_id_seen
+                )).order_by(desc(AgentJobRequest.request_made_at)).limit(limit=limit + 1))
             else:
                 job_requests_query = await session_db.execute(select(AgentJobRequest).where(and_(
                     AgentJobRequest.customer_id == customer.id,
                     AgentJobRequest.job_request_state == JobRequestState.NOT_HANDLED
-                )).order_by(desc(AgentJobRequest.request_made_at)).limit(limit=limit))
+                )).order_by(desc(AgentJobRequest.request_made_at)).limit(limit=limit + 1))
             customer_job_requests = job_requests_query.scalars().all() #query returned -> python lst
         except Exception:
             return HTTPException(
@@ -73,9 +73,13 @@ class ActivityPageQuery:
             return JobRequestResponse(
                 status_code=200,
                 response='There arent\'s currently any job requests.',
-                cursor=None,
+                cursor=False,
                 last_request_date=None
             )
+
+        #checking if another page exists, then returning the requested limit
+        has_more = len(customer_job_requests) > limit
+        customer_job_requests = customer_job_requests[:limit]
 
         #getting the list of job requests returned
         request_lst_returned = job_reqest_lst_returned(
@@ -87,19 +91,19 @@ class ActivityPageQuery:
             status_code=200,
             response=None,
             returned_job_requests=request_lst_returned,
-            cursor=True,
+            cursor=has_more,
             last_request_date=customer_job_requests[-1].request_made_at
         )
 
     #field for getting the active jobs 
     @strawberry.field
-    async def active_jobs(self, customer_context:Info, limit:int=5,
-                          last_job_date:datetime | None=None):
+    async def active_jobs(self, customer_context:Info, limit:int=5):
         #getting the validated customer info
         try:
             customer:Customer = customer_context.context.get('customer')
             session_db:AsyncSession = customer_context.context.get('database_session')
-            last_active_job = last_job_date
+            cursor:bool = customer_context.context.get('cursor', False)
+            last_id_seen:datetime | None = customer_context.context.get('last_id_seen')
         except Exception:
             raise HTTPException(
                 status_code=400,
@@ -108,17 +112,17 @@ class ActivityPageQuery:
 
         #database query for -> customers active jobs 
         try:
-            if last_active_job:
+            if cursor:
                 active_jobs_query = await session_db.execute(select(AgentJob).where(and_(
                     AgentJob.customer_id == customer.id,
                     AgentJob.job_state == AgentJobState.ACTIVE,
-                    AgentJob.assigned_at > last_active_job
-                )).order_by(asc(AgentJob.assigned_at)).limit(limit=limit))
+                    AgentJob.assigned_at > last_id_seen
+                )).order_by(asc(AgentJob.assigned_at)).limit(limit=limit + 1))
             else:
                 active_jobs_query = await session_db.execute(select(AgentJob).where(and_(
                     AgentJob.customer_id == customer.id,
                     AgentJob.job_state == AgentJobState.ACTIVE
-                )).order_by(asc(AgentJob.assigned_at)).limit(limit=limit)) #sorts by the earliest job
+                )).order_by(asc(AgentJob.assigned_at)).limit(limit=limit + 1)) #sorts by the earliest job
             customer_active_jobs = active_jobs_query.scalars().all()
         except Exception:
             raise HTTPException(
@@ -132,9 +136,13 @@ class ActivityPageQuery:
                 status_code=200,
                 response='There aren\'t any current active jobs.',
                 jobs_returned=None,
-                cursor=None,
+                cursor=False,
                 last_job_date=None
             )
+
+        #checking if another page exists, then returning the requested limit
+        has_more = len(customer_active_jobs) > limit
+        customer_active_jobs = customer_active_jobs[:limit]
 
         #getting the list of returned active jobs
         returned_active_jobs = jobs_returned_lst(
@@ -147,19 +155,19 @@ class ActivityPageQuery:
             status_code=200,
             response=None,
             jobs_returned=returned_active_jobs,
-            cursor=True,
+            cursor=has_more,
             last_job_date=customer_active_jobs[-1].assigned_at
         )
 
     #field for the client side query -> completed jobs 
     @strawberry.field
-    async def completed_jobs(self, customer_context:Info, limit:int=5,
-                             last_job_date:datetime | None=None):
+    async def completed_jobs(self, customer_context:Info, limit:int=5):
         #retrieving the customers context
         try:
             customer:Customer = customer_context.context.get('customer')
             session_db:AsyncSession = customer_context.context.get('database_session')
-            last_completed_payment_date = last_job_date
+            cursor:bool = customer_context.context.get('cursor', False)
+            last_id_seen:datetime | None = customer_context.context.get('last_id_seen')
         except Exception:
             return HTTPException(
                 status_code=400,
@@ -169,17 +177,17 @@ class ActivityPageQuery:
         #database query -> completed jobs 
         try:
             #check based on cursor 
-            if last_completed_payment_date:
+            if cursor:
                 completed_jobs_query = await session_db.execute(select(AgentJob).where(and_(
                     AgentJob.customer_id == customer.id,
                     AgentJob.job_state == AgentJobState.DONE,
-                    AgentJob.completed_at < last_completed_payment_date
-                )).order_by(desc(AgentJob.completed_at)).limit(limit=limit))
+                    AgentJob.completed_at < last_id_seen
+                )).order_by(desc(AgentJob.completed_at)).limit(limit=limit + 1))
             else:
                 completed_jobs_query = await session_db.execute(select(AgentJob).where(and_(
                     AgentJob.customer_id == customer.id,
                     AgentJob.job_state == AgentJobState.DONE
-                )).order_by(desc(AgentJob.completed_at)).limit(limit=limit))
+                )).order_by(desc(AgentJob.completed_at)).limit(limit=limit + 1))
 
             customer_completed_jobs = completed_jobs_query.scalars().all() #gets the completed jobs in lst
         except Exception:
@@ -193,9 +201,13 @@ class ActivityPageQuery:
             return JobReturnedResponse(
                 status_code=200,
                 response='There aren\'t any completed jobs.',
-                cursor=None,
+                cursor=False,
                 last_job_date=None
             )
+
+        #checking if another page exists, then returning the requested limit
+        has_more = len(customer_completed_jobs) > limit
+        customer_completed_jobs = customer_completed_jobs[:limit]
 
         #getting lst of the returned completed jobs 
         returned_complete_jobs = jobs_returned_lst(
@@ -208,19 +220,19 @@ class ActivityPageQuery:
             status_code=200,
             response=None,
             jobs_returned=returned_complete_jobs,
-            cursor=True,
+            cursor=has_more,
             last_job_date=customer_completed_jobs[-1].completed_at #getting last job at end of lst
         )
 
     #client side query for the jobs transactions 
     @strawberry.field 
-    async def customer_job_payments(self, customer_context:Info, limit:int=5,
-                                    last_payment_date:datetime | None=None):
+    async def customer_job_payments(self, customer_context:Info, limit:int=5):
         #getting the customer context info 
         try:
             customer:Customer = customer_context.context.get('customer')
             session_db:AsyncSession = customer_context.context.get('database_session')
-            last_payment_made = last_payment_date
+            cursor:bool = customer_context.context.get('cursor', False)
+            last_id_seen:datetime | None = customer_context.context.get('last_id_seen')
         except Exception:
             return HTTPException(
                 status_code=400,
@@ -229,15 +241,15 @@ class ActivityPageQuery:
 
         #database query for the customer transactions
         try:
-            if last_payment_made:
+            if cursor:
                 payments_query = await session_db.execute(select(JobPayments).where(and_(
                     JobPayments.customer_id == customer.id,
-                    JobPayments.paid_at < last_payment_made
-                )).order_by(desc(JobPayments.paid_at)).limit(limit=limit))
+                    JobPayments.paid_at < last_id_seen
+                )).order_by(desc(JobPayments.paid_at)).limit(limit=limit + 1))
             else:
                 payments_query = await session_db.execute(select(JobPayments).where(
                     JobPayments.customer_id == customer.id
-                ).order_by(desc(JobPayments.paid_at)).limit(limit=limit))
+                ).order_by(desc(JobPayments.paid_at)).limit(limit=limit + 1))
             payments = payments_query.scalars().all()
         except Exception:
             return HTTPException(
@@ -251,9 +263,13 @@ class ActivityPageQuery:
                 status_code=200,
                 response='There haven\'t been any payments made.',
                 payments_returned=None,
-                cursor=None,
+                cursor=False,
                 last_payment_date=None
             )
+
+        #checking if another page exists, then returning the requested limit
+        has_more = len(payments) > limit
+        payments = payments[:limit]
 
         #getting the lst of payments returned to server
         payments_returned_lst = get_customer_payments_lst(
@@ -265,7 +281,7 @@ class ActivityPageQuery:
             status_code=200,
             response=None,
             payments_returned=payments_returned_lst,
-            cursor=True,
+            cursor=has_more,
             last_payment_date=payments[-1].paid_at
         )
 

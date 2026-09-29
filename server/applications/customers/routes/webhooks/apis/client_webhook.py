@@ -4,7 +4,7 @@ from fastapi import Depends, Header
 from fastapi.sse import EventSourceResponse
 from server.applications.customers.routes.webhooks.apis.job_webhook import customer_api_webhook_router
 from server.applications.customers.services.auth.auth_service import get_current_customer
-from server.app import (
+from server.dependencies import (
     get_cache_db,
     get_server_key,
     get_jobs_events
@@ -47,12 +47,13 @@ async def send_cached_job(client_signature:Annotated[str, Header(alias='Signatur
             detail='Invalid signature. Request failed.'
         )
 
-    # Give each offer its own identity so simultaneous offers from one agent
-    # cannot overwrite or consume each other.
+    #creating a unique id for the cached job offer
     offer_id = str(uuid4())
     cached_offer = customer_info.model_dump(mode='json')
     cached_offer['offer_id'] = offer_id
     cache_key = f'pending-job/{customer_info.customer_id}/{offer_id}'
+
+    #storing the cached job offer
     try:
         await cache_db.insert(
             key=cache_key,
@@ -65,7 +66,7 @@ async def send_cached_job(client_signature:Annotated[str, Header(alias='Signatur
             detail='Unable to operate on the cache.'
         )
 
-    #setting the event to set for the customer cached job 
+    #setting the event for the customer's cached job
     try:
         await server_events.event_set(
             data={
@@ -89,9 +90,17 @@ async def stream_customer_job(customer:Annotated[Customer, Depends(get_current_c
     async def stream_jobs():
         while True:
             customer_id = str(customer.id)
+            #waiting for an incoming job in this customer's queue
             await server_events.event_wait(customer_id)
             event_data = await server_events.get_item(customer_id)
+
+            #checking the queued job belongs to the validated customer
+            if not event_data or event_data.get('customer_id') != customer_id:
+                continue
+
             customer_data = event_data.get('customer_data') or {}
+
+            #sending the incoming job offer to the client
             yield AgentJobYield(
                 offer_id=customer_data.get('offer_id'),
                 agent_name=customer_data.get('agent_name'),

@@ -3,7 +3,7 @@ from fastapi.requests import Request
 from fastapi.exceptions import HTTPException
 from fastapi import Depends
 from server.applications.customers.routes.pages.home.agent_chat import customer_home_router
-from server.app import (
+from server.dependencies import (
     get_relational_db_session,
     get_stripe_api_key,
     get_cache_db,
@@ -263,27 +263,6 @@ async def customer_job_payment(payment_id_str:str,
         # Stripe's idempotency key protects the charge if Redis is unavailable.
         pass
 
-    #creating the pydantic model for the agents job request 
-    agent_job_model = AgentsJobRequest(
-        customer_id=str(customer.id),
-        job_id=str(agent_job.id),
-        job_name=agent_job.job_name,
-        job_description=agent_job.job_description
-    )
-
-    #getting signature for the request
-    pine_siganture = hmac.new(
-        pine_server_key.encode('utf-8'),
-        agent_job_model.model_dump_json().encode('utf-8'),
-        digestmod=hashlib.sha256
-    )
-
-    #building out params for request
-    headers = {
-        'Content-type':'application/json',
-        'Signature':pine_siganture.hexdigest()
-    }
-    data = agent_job_model.model_dump_json()
     #getting the agents url for request
     try:
         hired_agent_query = await session_db.execute(select(HiredAgent).where(and_(
@@ -300,6 +279,29 @@ async def customer_job_payment(payment_id_str:str,
             status_code=500,
             detail='Unable to locate the hired agent endpoint.'
         )
+
+    #creating the pydantic model for the agents job request
+    agent_job_model = AgentsJobRequest(
+        customer_id=str(customer.id),
+        job_id=str(agent_job.id),
+        job_name=agent_job.job_name,
+        job_description=agent_job.job_description,
+        agent_restrictions=hired_agent.agent_restrictions
+    )
+
+    #getting signature for the request
+    pine_siganture = hmac.new(
+        pine_server_key.encode('utf-8'),
+        agent_job_model.model_dump_json().encode('utf-8'),
+        digestmod=hashlib.sha256
+    )
+
+    #building out params for request
+    headers = {
+        'Content-type':'application/json',
+        'Signature':pine_siganture.hexdigest()
+    }
+    data = agent_job_model.model_dump_json()
 
     #sending the request to the hired agent
     try:
@@ -362,7 +364,8 @@ async def customer_job_payment(payment_id_str:str,
                 'customer_noti': {
                     'noti_id':str(customer_notification.id),
                     'noti_header':customer_notification.notification_header,
-                    'noti_message':customer_notification.notification_message
+                    'noti_message':customer_notification.notification_message,
+                    'noti_type':customer_notification.notification_type
                 }
             }
         )

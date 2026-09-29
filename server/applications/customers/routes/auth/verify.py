@@ -2,7 +2,7 @@
 from fastapi.exceptions import HTTPException
 from fastapi import Depends
 from server.applications.customers.routes.auth.signup import customer_auth_router
-from server.app import (
+from server.dependencies import (
     get_relational_db_session,
     get_servers_number,
     get_twilio_client,

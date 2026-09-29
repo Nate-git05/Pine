@@ -3,7 +3,7 @@ from fastapi.requests import Request
 from fastapi import Depends
 from fastapi.exceptions import HTTPException
 from typing import Annotated
-from server.app import get_relational_db_session
+from server.dependencies import get_relational_db_session
 from server.models.auths.api_auth import MerchantAPI
 from server.models.users.merchants import Merchant
 from server.models.activities.jobs.agent_job import AgentJob

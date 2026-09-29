@@ -2,14 +2,15 @@
 import string 
 import secrets
 from fastapi.exceptions import HTTPException
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.requests import Request
-from server.app import (
+from server.dependencies import (
     get_relational_db_session,
     get_server_key
 )
 from server.models.users.customers import Customer
 from server.models.auths.authentications import SessionAuthentication
+from server.applications.customers.schemas.auth.customer_context import CustomerContextRequest
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic_extra_types.phone_numbers import PhoneNumber
@@ -21,7 +22,6 @@ from datetime import datetime, timezone
 from uuid import UUID
 import hmac 
 import hashlib
-import json
 
 """Helper functions for the auth routes"""
 #function to generate user six digit code
@@ -49,12 +49,16 @@ class AuthState(StrEnum):
 
 """Dependency function for session auths"""
 #Rest methods 
-oauth2_scheme = OAuth2PasswordBearer() #strips the token from request
+bearer_scheme = HTTPBearer() #strips the token from request
 
 #authorizes customers session with the server
-async def get_current_customer(customer_token:Annotated[str, Depends(oauth2_scheme)],
-                               session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
-                               PINE_SERVER_KEY:Annotated[str, Depends(get_server_key)]):
+async def get_current_customer(
+    customer_credentials:Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
+    session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
+    PINE_SERVER_KEY:Annotated[str, Depends(get_server_key)]
+):
+    customer_token = customer_credentials.credentials
+
     #casting the token to UUID
     try:
         token_uuid = UUID(customer_token)
@@ -143,63 +147,128 @@ async def get_current_customer(customer_token:Annotated[str, Depends(oauth2_sche
 #context getter to validate database session with customer
 async def get_customer_context(
     request:Request,
-    session_db:Annotated[AsyncSession, Depends(get_relational_db_session)]
+    customer_credentials:Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
+    session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
+    PINE_SERVER_KEY:Annotated[str, Depends(get_server_key)]
 ) -> dict:
-    """Authenticate GraphQL requests using the same token scheme as REST."""
+    customer_token = customer_credentials.credentials
+
+    #reading request data for cursor pagination
     try:
-        request_data = await request.json()
-    except Exception as error:
-        raise HTTPException(status_code=400, detail='The request body is missing or invalid.') from error
-
-    authorization = request.headers.get('Authorization', '')
-    scheme, _, token_value = authorization.partition(' ')
-    if scheme.lower() != 'bearer' or not token_value.strip():
-        raise HTTPException(status_code=401, detail='Please sign in to continue.')
-    try:
-        customer_token = UUID(token_value.strip())
-    except ValueError as error:
-        raise HTTPException(status_code=401, detail='Invalid session token.') from error
-
-    secret = request.app.state.server_key
-    customer_token_hash = hmac.new(
-        secret.encode('utf-8'), customer_token.bytes, hashlib.sha256
-    ).hexdigest().encode('utf-8')
-    session_query = await session_db.execute(select(SessionAuthentication).where(
-        SessionAuthentication.session_token == customer_token_hash
-    ))
-    customer_session = session_query.scalar_one_or_none()
-    if not customer_session:
-        raise HTTPException(status_code=401, detail='Invalid session token.')
-    now = datetime.now(timezone.utc)
-    if now >= customer_session.token_exp_time:
-        customer_session.expired_at = now
-        await session_db.commit()
-        raise HTTPException(status_code=401, detail='Session expired. Please sign in again.')
-
-    customer_query = await session_db.execute(select(Customer).where(
-        Customer.id == customer_session.customer_id
-    ))
-    customer = customer_query.scalar_one_or_none()
-    if not customer:
-        raise HTTPException(status_code=401, detail='Customer account was not found.')
-    customer_session.validated_at = now
-    await session_db.commit()
-
-    variables = request_data.get('variables') or {}
-    last_date = variables.get('last_date', request_data.get('last_date'))
-    if isinstance(last_date, str):
+        request_data = CustomerContextRequest.model_validate_json(
+            await request.body()
+        )
+    except Exception:
         try:
-            last_date = datetime.fromisoformat(last_date.replace('Z', '+00:00'))
-        except ValueError:
-            last_date = None
+            request_data = CustomerContextRequest.model_validate(
+                dict(request.query_params)
+            )
+        except Exception:
+            request_data = CustomerContextRequest()
+
+    #casting the token to UUID
+    try:
+        token_uuid = UUID(customer_token)
+    except Exception:
+        raise HTTPException(
+            status_code=404,
+            detail='Database error. Invalid token shape.'
+        )
+
+    #hashing the token
+    token_hash = hmac.new(
+        PINE_SERVER_KEY.encode('utf-8'),
+        token_uuid.bytes,
+        hashlib.sha256
+    ).hexdigest().encode('utf-8')
+
+    #database query for the token
+    try:
+        session_query = await session_db.execute(select(SessionAuthentication).where(
+            SessionAuthentication.session_token == token_hash
+        ))
+        customer_session = session_query.scalar_one_or_none()
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail='Database error. Session handling went wrong.'
+        )
+
+    #check if session exists
+    if not customer_session:
+        raise HTTPException(
+            status_code=404,
+            detail='Unable to locate customer\'s session.'
+        )
+
+    #check if session expired
+    now = datetime.now(timezone.utc)
+    session_valid = now < customer_session.token_exp_time
+    if not session_valid:
+        customer_session.expired_at = now
+        try:
+            await session_db.commit()
+        except Exception:
+            await session_db.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail='Database error. Session handling went wrong.'
+            )
+        raise HTTPException(
+            status_code=404,
+            detail='Session expired. Please login again.'
+        )
+
+    #database query for the customer
+    try:
+        customer_query = await session_db.execute(select(Customer).where(
+            Customer.id == customer_session.customer_id
+        ))
+        customer = customer_query.scalar_one_or_none()
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail='Database error. Session handling went wrong.'
+        )
+    if not customer:
+        raise HTTPException(
+            status_code=400,
+            detail='Unable to locate customer. Please try signing back in.'
+        )
+
+    try:
+        customer_session.validated_at = now #validating the customer session token
+        await session_db.commit() #committing change made
+    except Exception:
+        await session_db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail='Database error. Session handling went wrong.'
+        )
+
+    #getting the GraphQL variables
+    variables = request_data.variables
+
+    #checking if the client is requesting the next page
+    cursor = request_data.cursor
+    if cursor is None and variables:
+        cursor = variables.cursor
+
+    #getting the last datetime id seen by the client
+    last_id_seen = request_data.last_id_seen or request_data.last_date or request_data.last_seen
+    if not last_id_seen and variables:
+        last_id_seen = variables.last_id_seen or variables.last_date or variables.last_seen
+
+    if isinstance(last_id_seen, datetime) and last_id_seen.tzinfo is None:
+        last_id_seen = last_id_seen.replace(tzinfo=timezone.utc)
+
+    #returning the customer and cursor data to the GraphQL routes
     return {
         'customer': customer,
         'database_session': session_db,
-        'cursor': variables.get('cursor', request_data.get('cursor')),
-        'last_date': last_date,
-        'last_made': last_date,
-        'last_active_job': last_date,
-        'last_id_seen': last_date,
+        'cursor': cursor,
+        'last_id_seen': last_id_seen,
+        'last_seen': last_id_seen,
     }
 
 #dependency function to retrive the validated customer
@@ -208,5 +277,6 @@ async def get_customer(context_info:Annotated[dict, Depends(get_customer_context
         'customer':context_info.get('customer'),
         'database_session':context_info.get('database_session'),
         'cursor':context_info.get('cursor'),
-        'last_date':context_info.get('last_date')
+        'last_id_seen':context_info.get('last_id_seen'),
+        'last_seen':context_info.get('last_seen')
     }

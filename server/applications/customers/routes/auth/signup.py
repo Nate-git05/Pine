@@ -2,7 +2,7 @@
 from fastapi.routing import APIRouter
 from fastapi.exceptions import HTTPException
 from fastapi import Depends
-from server.app import (
+from server.dependencies import (
     get_relational_db_session, 
     get_cache_db,
     get_twilio_client,

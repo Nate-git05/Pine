@@ -2,7 +2,7 @@
 from fastapi.routing import APIRouter
 from fastapi.exceptions import HTTPException
 from fastapi import Depends
-from server.app import (
+from server.dependencies import (
     get_relational_db_session,
     get_notifications_events,
     get_server_key,
@@ -195,7 +195,8 @@ async def update_customer_job(merchant_api_model:Annotated[MerchantAPI, Depends(
         'customer_noti': {
             'noti_id':str(customer_notification.id),
             'noti_header':customer_notification.notification_header,
-            'noti_message':customer_notification.notification_message
+            'noti_message':customer_notification.notification_message,
+            'noti_type':customer_notification.notification_type
         }
     }
     try:
