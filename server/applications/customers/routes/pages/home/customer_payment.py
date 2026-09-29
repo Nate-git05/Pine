@@ -49,6 +49,7 @@ from typing import Annotated
 from aiohttp import ClientSession
 from datetime import datetime, timezone
 import stripe
+import hashlib
 import hmac 
 import json
 
@@ -466,12 +467,16 @@ async def created_payment_model(request:Request,
         cached_setup = await cache_db.retrieve(key=cache_key)
         if not cached_setup:
             raise ValueError('Pending Stripe customer data is missing.')
+        
         cache_data:dict = json.loads(cached_setup)
         if not cache_data or not cache_data.get('customer_stripe_id'):
             raise ValueError('Pending Stripe customer data is missing.')
 
-        customer_query = await session_db.execute(select(Customer).where(Customer.id == customer_id))
+        customer_query = await session_db.execute(select(Customer).where(
+            Customer.id == customer_id
+        ))
         customer = customer_query.scalar_one_or_none()
+
         if not customer:
             raise ValueError('Customer account was not found.')
 
@@ -485,28 +490,37 @@ async def created_payment_model(request:Request,
                 api_key=request.app.state.stripe_api_key,
                 id=query_param_session
         )
+
         if customer_session.customer != cache_data['customer_stripe_id']:
             raise ValueError('Stripe checkout session does not match this customer.')
         #getting the payment id from session
         setup_intent_id = customer_session.setup_intent
+
         if not setup_intent_id:
             raise ValueError('Stripe setup was not completed.')
         setup_intent = stripe.SetupIntent.retrieve(
             api_key=request.app.state.stripe_api_key,
             id=setup_intent_id
         )
+
+        #getting the stripe -> check if the method was succesfully returned 
         stripe_payment_id = setup_intent.payment_method
         if not stripe_payment_id:
             raise ValueError('Stripe did not return a saved payment method.')
         if setup_intent.status != 'succeeded':
             raise ValueError('Stripe card setup has not succeeded.')
+
+        #retrieving the payment from the payment id 
         payment_method = stripe.PaymentMethod.retrieve(
             api_key=request.app.state.stripe_api_key,
             id=stripe_payment_id
         )
+
+        #checking if cached stripe customer id == to stripe stored customer id 
         if payment_method.customer != cache_data['customer_stripe_id']:
             raise ValueError('Saved payment method does not belong to this Stripe customer.')
 
+        #check for if payment already exists
         existing_method_query = await session_db.execute(select(StripePayment).where(and_(
             StripePayment.customer_id == customer.id,
             StripePayment.stripe_payment_id == stripe_payment_id
