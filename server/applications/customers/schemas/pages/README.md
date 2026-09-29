@@ -1,12 +1,5 @@
 # Customer page schemas
 
-These Pydantic and Strawberry types define payloads/responses for mounted search, payment, activity, and notification SSE routes. They are contracts, not proof a matching route is mounted: profile schemas exist but profile routes are incomplete and not included by `app.py`; notification REST/GraphQL schemas likewise do not provide history endpoints.
+Search request/response models live here alongside activity and profile schemas. `AgentContractResponse` includes the hired-agent name returned by the hire route. Activity GraphQL responses carry a `cursor` boolean and a list-specific last timestamp. For the next page, request-level `cursor` and ISO-8601 `last_id_seen` values are parsed by the GraphQL context and used by the selected resolver. Profile schemas do not imply that profile routes are mounted.
 
-Notable conventions:
-
-- Search/detail and activity prices are exposed in dollars, while persisted job prices are integer cents.
-- `ReturnedPayments.payment_id` is Pine's UUID for a saved Stripe method, not Stripe's PaymentMethod ID.
-- Activity GraphQL uses Strawberry's default camel-casing; the request timestamp field is currently misspelled `rrequest_created_at` in Python, producing the same misspelling in GraphQL.
-- Incoming job webhook `job_price` is a positive integer in cents; its SSE output is a display value in dollars and includes generated `offer_id`.
-
-For routes and data flow, see [`server/README.md`](../../../../README.md) and the [customer mobile API guide](../../../../../client/mobile/README.md).
+`home_schemas.py` defines the signed `AgentsJobRequest` sent after payment; it includes the customer's saved `agent_restrictions` for the hired agent. Customer notification SSE responses include the notification type together with the notification ID, header, and message.
