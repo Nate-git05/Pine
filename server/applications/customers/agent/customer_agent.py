@@ -1,13 +1,14 @@
 #File for the customer Pine agent 
 from agents import (
     Agent,
-    Runner,
-    function_tool
+    Runner
 )
 from dataclasses import dataclass 
 from enum import StrEnum
 from pydantic import BaseModel
 from pathlib import Path
+from sqlalchemy.ext.asyncio import AsyncSession
+from server.config.database import CacheDatabase
 
 """Enum to classify the type of message from customer"""
 class MessageType(StrEnum):
