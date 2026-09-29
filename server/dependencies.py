@@ -62,3 +62,7 @@ def get_job_webhook_url(request:Request):
 #getting Stripe's api key
 def get_stripe_api_key(request:Request):
     return request.app.state.stripe_api_key
+
+"""getting the server\'s agent"""
+def get_server_agent(request:Request):
+    return request.app.state.pine_agent

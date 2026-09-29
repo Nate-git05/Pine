@@ -21,6 +21,18 @@ JOB_WEBHOOK_URL = os.getenv('JOB_WEBHOOK_URL')
 if not JOB_WEBHOOK_URL:
     raise ValueError('Unable to retrieve the url for the job webhook.')
 
+#Server's Stripe success/failed routes 
+STRIPE_SUCCESS_ROUTE = os.getenv('STRIPE_SUCCESS_ROUTE')
+STRIPE_CANCEL_ROUTE = os.getenv('sTRIPE_CANCEL_ROUTE')
+if (not STRIPE_SUCCESS_ROUTE) or (not STRIPE_CANCEL_ROUTE):
+    raise ValueError('Unable to retrieve the success nor cancel url for Stripe api from the .env file.')
+
+#Getting the server's agents info 
+ROUTER_AGENT = os.getenv('ROUTER_AGENT')
+TOOLING_AGENT = os.getenv('TOOLING_AGENT')
+if (not ROUTER_AGENT) or (not TOOLING_AGENT):
+    raise ValueError('Unable to get either the router agent or tooling agent name from .env file.')
+
 """Configuring the server\'s databases"""
 #Relational -> Postgres
 class Base(DeclarativeBase):

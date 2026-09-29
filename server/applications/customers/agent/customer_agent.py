@@ -9,6 +9,8 @@ from pydantic import BaseModel
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from server.config.database import CacheDatabase
+from typing import Any
+import json
 
 """Enum to classify the type of message from customer"""
 class MessageType(StrEnum):
@@ -45,11 +47,18 @@ def get_skill_content(skill_path:Path):
 
     return skill_content #returning content of the file
 
+"""Enum for the type of agent"""
+class AgentType(StrEnum):
+    ROUTER='router'
+    TOOLING='tooling'
+
 """Defining the Pine Agent model"""
 class PineAgent:
-    def __init__(self, routing_agent:str = None,
-                 tooling_agent:str = None, 
-                 tooling_lst:list = None):
+    def __init__(self, 
+                 routing_agent:str = None,
+                 tooling_agent:str = None,
+                 session_db:AsyncSession = None,
+                 cache_db:CacheDatabase = None):
         #defining the attributes 
         self.routing_agent = routing_agent
         self.tooling_agent = tooling_agent
@@ -58,6 +67,62 @@ class PineAgent:
         self.skill_file_map = {}
         self.agent_tool_lst = []
 
+    #static method to retrieve context for the router/tooling agent
+    @staticmethod
+    async def get_context(self, cache_key:str, 
+                             agent_type:AgentType,
+                             cache_db:CacheDatabase):
+        #matching the agent type with case 
+        try:
+            match agent_type:
+                case AgentType.ROUTER:
+                    router_context = await cache_db.retrieve_lst(
+                        key=cache_key
+                    )
+                    if not router_context:
+                        return ''
+
+                    #context -> str for agent message 
+                    return router_context
+
+                #case for the tooling agent 
+                case AgentType.TOOLING:
+                    tooling_agent_context = await cache_db.retrieve_lst(
+                        key=cache_key
+                    )
+                    if not tooling_agent_context:
+                        return '' #empty string if no context
+
+                    return tooling_agent_context
+        except Exception as error:
+            raise error
+
+    #static method to store context 
+    @staticmethod
+    async def store_context(self, cache_key:str,
+                            agent_type:AgentType,
+                            cache_value:Any,
+                            cache_db:CacheDatabase):
+        try:
+            match agent_type:
+                case AgentType.ROUTER:
+                    await cache_db.insert_list(
+                        key=cache_key,
+                        value=json.dumps(cache_value),
+                        exp_time=1200
+                    )
+                    return
+
+                #matching the tooling agent 
+                case AgentType.TOOLING:
+                    await cache_db.insert_list(
+                        key=cache_key,
+                        value=json.dumps(cache_value)
+                    )
+                    return
+        except Exception as error:
+            raise error
+                
     #Method to retrieve the skill for the agent 
     def get_agent_skill(self, message_type:MessageType | None = None, router:bool | None =None):
         #getting agent's skill

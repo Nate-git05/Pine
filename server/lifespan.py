@@ -26,6 +26,7 @@ from server.config.apis import (
     NotificationEvents,
     IncomingJobsEvents
 )
+from server.applications.customers.agent.customer_agent import PineAgent
 
 #app's lifespan function -> configures the servers attributes at startup time
 @asynccontextmanager
@@ -82,6 +83,11 @@ async def lifespan(app:FastAPI):
 
     #configuring the app's http async object
     app.state.http_client = aiohttp.ClientSession()
+
+    #configuring the server's agent 
+    app.state.pine_agent = PineAgent(
+        
+    )
 
     yield #yields the application running
 
