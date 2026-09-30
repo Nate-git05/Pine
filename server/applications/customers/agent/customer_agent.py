@@ -60,7 +60,7 @@ class AgentType(StrEnum):
     TOOLING='tooling'
 
 
-# Keep the router instructions separate from the tooling skill instructions.
+#Keep the router instructions separate from the tooling skill instructions.
 SKILL_DIRECTORY = Path(__file__).parent / 'skills'
 ROUTER_SKILL_DIRECTORY = SKILL_DIRECTORY / 'router'
 TOOLING_SKILL_DIRECTORY = SKILL_DIRECTORY / 'tooling'
@@ -81,7 +81,7 @@ class PineAgent:
                  tooling_agent: str | None = None,
                  relational_db: RelationalDatabase | None = None,
                  cache_db: CacheDatabase | None = None,
-                 skill_file_map: dict[MessageType | str, Path] | None = None,
+                 skill_file_map: dict[MessageType | str, Path] = DEFAULT_SKILL_FILE_MAP,
                  agent_tool_lst: list[Any] | None = None):
         # Shared model and adapter settings are configured once at app startup.
         self.routing_agent = routing_agent
@@ -90,9 +90,7 @@ class PineAgent:
         self.cache_db = cache_db
 
         # Keep tool implementations optional while their files are being built.
-        self.skill_file_map = (
-            skill_file_map if skill_file_map is not None else DEFAULT_SKILL_FILE_MAP.copy()
-        )
+        self.skill_file_map skill_file_map
         self.agent_tool_lst = agent_tool_lst or []
 
     # Read the agent's full conversation context without consuming the Redis list.

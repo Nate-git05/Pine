@@ -28,7 +28,13 @@ from server.config.apis import (
     NotificationEvents,
     IncomingJobsEvents
 )
-from server.applications.customers.agent.customer_agent import PineAgent
+from server.applications.customers.agent.customer_agent import (
+    PineAgent,
+    ski
+)
+from server.applications.customers.agent.tools.agent_tools import (
+    retrieve_agents_tools
+)
 
 #app's lifespan function -> configures the servers attributes at startup time
 @asynccontextmanager
@@ -80,18 +86,24 @@ async def lifespan(app:FastAPI):
     #getting the server private attributes
     app.state.server_key = SERVER_SECRET_KEY
     app.state.server_number = PINENUMBER #adding the server's number to the app state
-    app.state.job_webhook_url = JOB_WEBHOOK_URL
     app.state.stripe_api_key = STRIPE_API_KEY
 
     #configuring the app's http async object
     app.state.http_client = aiohttp.ClientSession()
 
     #configuring the server's agent 
+    agent_tool_lst = retrieve_agents_tools(
+        relational_db=relational_database,
+        http_client=app.state.http_client,
+        pine_server_key=app.state.server_key,
+        webhook_url=JOB_WEBHOOK_URL
+    )
     app.state.pine_agent = PineAgent(
         routing_agent=ROUTER_AGENT,
         tooling_agent=TOOLING_AGENT,
         relational_db=relational_database,
-        cache_db=cache_database
+        cache_db=cache_database,
+        agent_tool_lst=agent_tool_lst
     )
 
     yield #yields the application running
