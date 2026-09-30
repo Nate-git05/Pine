@@ -55,9 +55,9 @@ def get_servers_number(request:Request):
 async def get_async_http(request:Request):
     return request.app.state.http_client
 
-#getting the job webhook url
-def get_job_webhook_url(request:Request):
-    return request.app.state.job_webhook_url
+#getting Pine's client webhook URL
+def get_client_webhook_url(request:Request) -> str:
+    return request.app.state.client_webhook_url
 
 #getting Stripe's api key
 def get_stripe_api_key(request:Request):

@@ -81,7 +81,7 @@ class PineAgent:
                  tooling_agent: str | None = None,
                  relational_db: RelationalDatabase | None = None,
                  cache_db: CacheDatabase | None = None,
-                 skill_file_map: dict[MessageType | str, Path] = DEFAULT_SKILL_FILE_MAP,
+                 skill_file_map: dict[MessageType | str, Path] | None = None,
                  agent_tool_lst: list[Any] | None = None):
         # Shared model and adapter settings are configured once at app startup.
         self.routing_agent = routing_agent
@@ -89,8 +89,10 @@ class PineAgent:
         self.relational_db = relational_db
         self.cache_db = cache_db
 
-        # Keep tool implementations optional while their files are being built.
-        self.skill_file_map skill_file_map
+        # Allow tests or future agent configurations to supply a skill map.
+        self.skill_file_map = (
+            skill_file_map if skill_file_map is not None else DEFAULT_SKILL_FILE_MAP.copy()
+        )
         self.agent_tool_lst = agent_tool_lst or []
 
     # Read the agent's full conversation context without consuming the Redis list.

@@ -104,6 +104,7 @@ async def chat_with_hired_agent(customer_info: AgentChatRequest,
         tooling_agent_message = create_tooling_agent_message_str(
             previous_context=tooling_agent_context,
             hired_agent_id=str(hired_agent.id),
+            customer_id=str(customer.id),
             customer_message=customer_info.customer_message,
         )
         agent_message = AgentMessage(

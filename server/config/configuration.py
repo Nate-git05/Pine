@@ -16,10 +16,10 @@ SERVER_SECRET_KEY = os.getenv('SERVER_SECRET_KEY')
 if not SERVER_SECRET_KEY:
     raise ValueError('Unable to retrieve the server\'s secret key.')
 
-#Server job webhook URL
-JOB_WEBHOOK_URL = os.getenv('JOB_WEBHOOK_URL')
-if not JOB_WEBHOOK_URL:
-    raise ValueError('Unable to retrieve the url for the job webhook.')
+#Pine's client webhook URL -> creates the customer's job offer
+CLIENT_WEBHOOK_URL = os.getenv('CLIENT_WEBHOOK_URL')
+if not CLIENT_WEBHOOK_URL:
+    raise ValueError('Unable to retrieve the URL for the client webhook.')
 
 #Server's Stripe success/failed routes 
 STRIPE_SUCCESS_ROUTE = os.getenv('STRIPE_SUCCESS_ROUTE')

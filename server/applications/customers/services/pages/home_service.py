@@ -176,10 +176,12 @@ def create_router_agent_message(previous_context:list[str],
 #returns the tooling agent message 
 def create_tooling_agent_message_str(previous_context:list[str], 
                         hired_agent_id:str,
+                        customer_id:str,
                         customer_message:str):
     #message dict
     message_content = {
         'hired_agent_id':hired_agent_id,
+        'customer_id':customer_id,
         'content':customer_message
     }
 

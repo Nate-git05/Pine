@@ -11,7 +11,7 @@ from server.config.configuration import (
     SERVER_SECRET_KEY,
     QDRANT_URL,
     QDRANT_API_KEY,
-    JOB_WEBHOOK_URL,
+    CLIENT_WEBHOOK_URL,
     EMBEDDING_MODEL,
     STRIPE_API_KEY,
     ROUTER_AGENT,
@@ -28,10 +28,7 @@ from server.config.apis import (
     NotificationEvents,
     IncomingJobsEvents
 )
-from server.applications.customers.agent.customer_agent import (
-    PineAgent,
-    ski
-)
+from server.applications.customers.agent.customer_agent import PineAgent
 from server.applications.customers.agent.tools.agent_tools import (
     retrieve_agents_tools
 )
@@ -87,6 +84,7 @@ async def lifespan(app:FastAPI):
     app.state.server_key = SERVER_SECRET_KEY
     app.state.server_number = PINENUMBER #adding the server's number to the app state
     app.state.stripe_api_key = STRIPE_API_KEY
+    app.state.client_webhook_url = CLIENT_WEBHOOK_URL
 
     #configuring the app's http async object
     app.state.http_client = aiohttp.ClientSession()
@@ -96,7 +94,7 @@ async def lifespan(app:FastAPI):
         relational_db=relational_database,
         http_client=app.state.http_client,
         pine_server_key=app.state.server_key,
-        webhook_url=JOB_WEBHOOK_URL
+        client_webhook_url=CLIENT_WEBHOOK_URL,
     )
     app.state.pine_agent = PineAgent(
         routing_agent=ROUTER_AGENT,
