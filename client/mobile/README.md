@@ -1,6 +1,20 @@
 # Customer mobile app integration
 
-This folder contains the customer API transport layer and route-by-route integration guide for the React Native customer app. `src/api/customer-api.ts` wraps customer routes mounted by `server/app.py`; React Native screens and navigation are not in this checkout yet.
+This folder contains the Expo Router React Native customer app, API transport layer, and route-by-route integration guide. `src/api/customer-api.ts` wraps customer routes mounted by `server/app.py`.
+
+## Run the mobile app
+
+Use Node.js 22.13 or newer. Copy `.env.example` to `.env` in this directory and point it at the running customer server:
+
+```env
+EXPO_PUBLIC_PINE_API_URL=http://YOUR_LOCAL_NETWORK_IP:8000
+```
+
+Use your development machine's LAN IP when testing on a physical phone; `localhost` on the phone points back to the phone itself. Install the dependencies with `npm install`, then run `npm start` and open the project in Expo Go or a development build.
+
+The app shell uses Expo Router and stores the verified customer session with Expo SecureStore. `src/api/mobile-session.ts` adapts SecureStore and the native SSE client to the framework-independent `CustomerApi`.
+
+The app currently includes SMS signup/login/verification, agent discovery and hiring, agent chat, streamed job offers with saved-card payment selection, activity lists, notification inbox, profile, email integrations, hire management, and local sign out. The backend does not provide chat history or job-offer replay, so chat messages and offers cannot be restored after the app loses that in-memory state.
 
 Create one `CustomerApi` instance with the deployment's API origin and a `CustomerSessionStore` adapter backed by the secure-storage library selected for the app. The server does not mount an `/api/v1` prefix. For example, the auth route is `${API_BASE_URL}/auth/customer/login`.
 
@@ -13,7 +27,7 @@ const customerApi = new CustomerApi({
 });
 ```
 
-The API client wraps auth, search/hire, chat, payments, activity, notifications, profile, and Gmail integration routes. It stores the verified session token through the injected secure store. SSE methods accept an `EventSourceAdapter`; connect it to the React Native SSE package selected for the app so it can send the required Bearer header.
+The API client wraps auth, search/hire, chat, payments, activity, notifications, profile, and Gmail integration routes. It stores the verified session token through the injected secure store. The app supplies a React Native SSE adapter that sends the required Bearer header.
 
 ## Navigation and API map
 

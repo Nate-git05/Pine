@@ -15,7 +15,7 @@ For the next page, pass the response's `cursor` and matching date (`lastRequestD
 
 ## Job detail and rating
 
-- `GET /customer/activity/jobs/{job_id}` returns job ID/name/description/price, summary, hired-agent ID/name, and active/completed timestamps as applicable. The detail price is in dollars.
+- `GET /customer/activity/jobs/{job_id}` returns job ID/name/description/price, rating, summary, hired-agent ID/name, and active/completed timestamps as applicable. The detail price is in dollars.
 - `POST /customer/activity/job/rating/{job_id}` accepts `{"job_rating": 5}`. The server permits rating only a completed job that has not already been rated. A numeric range is not declared in the current route contract, so do not hard-code a range based only on this documentation.
 
 ## Request detail and answer

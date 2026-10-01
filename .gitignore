@@ -1,3 +1,6 @@
 /server/.venv/
 /client/web/node_modules/
 /client/web/.next/
+/client/mobile/node_modules/
+/client/mobile/.expo/
+/client/mobile/.env

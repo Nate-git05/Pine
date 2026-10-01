@@ -7,7 +7,9 @@ export default function IndexPage() {
   const [hasSession, setHasSession] = useState<boolean | null>(null);
 
   useEffect(() => {
-    customerSessionStore.getToken().then((token) => setHasSession(Boolean(token)));
+    customerSessionStore.getToken()
+      .then((token) => setHasSession(Boolean(token)))
+      .catch(() => setHasSession(false));
   }, []);
 
   if (hasSession === null) {
