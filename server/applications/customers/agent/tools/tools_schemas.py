@@ -23,6 +23,8 @@ class HiredAgentResponse(BaseModel):
     job_price:int
     agent_id:UUID
     agent_name:str
+    #The hire's configured abilities describe the work the agent can take on.
+    agent_abilities:list[str]
     agent_restrictions:list[str] | None = None
 
 #Response schemas -> returns the agents url 

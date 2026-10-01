@@ -42,7 +42,7 @@ The public customer and merchant landing forms both collect first name, last nam
 
 Search routes return active agents, their descriptions, pricing, and customer rating data. Hiring creates a customer-specific `HiredAgent` row with the agent name and ID, abilities, restrictions, current state, and price. The row ID identifies this customer’s hire and is used in the chat path: `POST /customer/home/chat/{hired_agent_id_str}`.
 
-Chat loads separate router and tooling histories from Redis. The router classifies a message as a conversation, job creation, informative, support, or harmful request. The tooling agent receives the prior conversation and customer/hire IDs, then uses its registered tools. Conversation requests are signed and sent to the hired agent’s URL. Job requests are signed and sent to Pine’s client webhook so the offer can be queued for payment.
+Chat loads separate router and tooling histories from Redis. The router classifies a message as a conversation, job creation, informative, support, or harmful request. The tooling agent receives the prior conversation and customer/hire IDs, then uses its registered tools. The hired-agent lookup returns the public agent ID, configured abilities/capabilities, restrictions, and price; the tooling agent checks that a requested task fits the abilities and violates no restriction before creating an offer. Conversation requests are signed and sent to the hired agent’s URL. Job requests are signed and sent to Pine’s client webhook so the offer can be queued for payment.
 
 ### Job offer and payment
 

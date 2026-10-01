@@ -33,7 +33,7 @@ def retrieve_agents_tools(
     # Find the customer's active hire and the information needed for its flow.
     @tool
     async def get_customer_hired_agent(hired_agent_info: HiredAgentInfo) -> str:
-        """Verify the active hire belongs to this customer and return its IDs, name, and job price."""
+        """Verify the active hire and return its IDs, abilities, restrictions, and job price."""
         try:
             async with relational_db.async_session() as session:
                 hired_agent_query = await session.execute(select(HiredAgent).where(and_(
@@ -53,6 +53,7 @@ def retrieve_agents_tools(
             agent_id=hired_agent.agent_id,
             agent_name=hired_agent.name,
             job_price=hired_agent.price_per_job,
+            agent_abilities=hired_agent.agent_abilities,
             agent_restrictions=hired_agent.agent_restrictions,
         ).model_dump_json()
 
