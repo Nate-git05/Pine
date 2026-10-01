@@ -1,1 +1,3 @@
 /server/.venv/
+/client/web/node_modules/
+/client/web/.next/
