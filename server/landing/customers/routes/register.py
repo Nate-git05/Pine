@@ -21,9 +21,10 @@ async def customer_registration(registration_info:CustomerRegistration,
                                 session_db:Annotated[AsyncSession, Depends(get_relational_db_session)]):
     #database query for existing registration
     try:
-        registration_query = await session_db.execute(select(CustomerRegisterModel).where(
+        registration_query = await session_db.execute(select(CustomerRegisterModel).where(or_(
+            CustomerRegisterModel.email == registration_info.email,
             CustomerRegisterModel.phonenumber == registration_info.phonenumber
-        ))
+        )))
         customer_registration = registration_query.scalar_one_or_none() #returns first found row 
     except Exception:
         raise HTTPException(
@@ -35,7 +36,7 @@ async def customer_registration(registration_info:CustomerRegistration,
     if customer_registration:
         raise HTTPException(
             status_code=400,
-            detail='This phonenumber is already registered.'
+            detail='A customer registration already exists for this email or phone number.'
         )
 
     #registering the new customer 

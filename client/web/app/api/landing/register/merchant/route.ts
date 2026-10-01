@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-type CustomerRegistrationRequest = {
+type MerchantRegistrationRequest = {
   first_name?: unknown;
   last_name?: unknown;
   email?: unknown;
@@ -15,20 +15,20 @@ export async function POST(request: Request) {
 
   if (!apiBaseUrl) {
     return NextResponse.json(
-      { detail: "Customer registration is not connected yet. Please try again later." },
+      { detail: "Merchant registration is not configured yet. Please try again later." },
       { status: 503 },
     );
   }
 
-  let registrationData: CustomerRegistrationRequest;
+  let registrationData: MerchantRegistrationRequest;
   try {
-    registrationData = await request.json() as CustomerRegistrationRequest;
+    registrationData = await request.json() as MerchantRegistrationRequest;
   } catch {
     return NextResponse.json({ detail: "Registration data must be valid JSON." }, { status: 400 });
   }
 
-  // Forward only the four fields accepted by the public customer registration API.
-  const customerRegistration: Record<(typeof registrationFields)[number], string> = {
+  // Forward only the fields accepted by the merchant lead-registration route.
+  const merchantRegistration: Record<(typeof registrationFields)[number], string> = {
     first_name: "",
     last_name: "",
     email: "",
@@ -38,16 +38,19 @@ export async function POST(request: Request) {
   for (const field of registrationFields) {
     const value = registrationData[field];
     if (typeof value !== "string" || !value.trim()) {
-      return NextResponse.json({ detail: `Please enter a valid ${field.replace("_", " ")}.` }, { status: 422 });
+      return NextResponse.json(
+        { detail: `Please enter a valid ${field.replace("_", " ")}.` },
+        { status: 422 },
+      );
     }
-    customerRegistration[field] = value.trim();
+    merchantRegistration[field] = value.trim();
   }
 
   try {
-    const backendResponse = await fetch(`${apiBaseUrl}/landing/register/customer`, {
+    const backendResponse = await fetch(`${apiBaseUrl}/landing/register/merchant`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(customerRegistration),
+      body: JSON.stringify(merchantRegistration),
       cache: "no-store",
     });
     const responseBody = await backendResponse.json().catch(() => ({

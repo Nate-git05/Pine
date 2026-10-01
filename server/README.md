@@ -10,6 +10,10 @@ The customer mobile route-by-route contract is documented in [`../client/mobile/
 
 ## Customer flows
 
+### Landing-page registration
+
+The public customer and merchant landing forms both collect first name, last name, email, and phone. `POST /landing/register/customer` stores a customer lead in `CustomerRegisterModel`; `POST /landing/register/merchant` stores a merchant lead in `MerchantRegistrationModel`. These routes use separate schemas and tables. They do not create authenticated application accounts. Customer account signup for the mobile app remains under `/auth/customer/signup` and requires SMS verification.
+
 ### Authentication
 
 1. `POST /auth/customer/signup` checks for an existing email or phone number, creates a pending SMS verification record, and returns a temporary verification token.

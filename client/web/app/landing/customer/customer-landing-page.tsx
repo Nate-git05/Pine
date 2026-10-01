@@ -1,19 +1,7 @@
 "use client";
 
-import { type FormEvent, type ReactNode, useEffect, useState } from "react";
-
-type RegistrationResponse = {
-  customer_token?: string;
-  response?: string;
-  detail?: string | Array<{ msg?: string }>;
-};
-
-type RegisterValues = {
-  first_name: string;
-  last_name: string;
-  email: string;
-  phonenumber: string;
-};
+import { type ReactNode, useEffect, useState } from "react";
+import { RegistrationModal } from "../../components/registration-modal";
 
 const agentCards = [
   {
@@ -182,208 +170,6 @@ function HostMockup() {
   );
 }
 
-function RegistrationModal({
-  onClose,
-}: {
-  onClose: () => void;
-}) {
-  const [step, setStep] = useState<"details" | "verify" | "complete">("details");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
-  const [customerToken, setCustomerToken] = useState("");
-  const [verificationMessage, setVerificationMessage] = useState("");
-
-  useEffect(() => {
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [onClose]);
-
-  async function submitRegistration(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const formElement = event.currentTarget;
-    setIsSubmitting(true);
-    setErrorMessage("");
-    setSuccessMessage("");
-
-    const formData = new FormData(formElement);
-    const registration: RegisterValues = {
-      first_name: String(formData.get("first_name") ?? "").trim(),
-      last_name: String(formData.get("last_name") ?? "").trim(),
-      email: String(formData.get("email") ?? "").trim(),
-      phonenumber: String(formData.get("phonenumber") ?? "").trim(),
-    };
-
-    try {
-      const response = await fetch("/api/auth/customer/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(registration),
-      });
-      const responseData = await response.json() as RegistrationResponse;
-
-      if (!response.ok) {
-        const detail = Array.isArray(responseData.detail)
-          ? responseData.detail.map((item) => item.msg).filter(Boolean).join(" ")
-          : responseData.detail;
-        throw new Error(detail || "We couldn’t complete your registration. Please try again.");
-      }
-
-      if (!responseData.customer_token) {
-        throw new Error("Pine could not start your registration. Please try again.");
-      }
-
-      setCustomerToken(responseData.customer_token);
-      setVerificationMessage(responseData.response || "We sent a verification code to your phone.");
-      setStep("verify");
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "We couldn’t reach Pine. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function verifyCustomer(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const formElement = event.currentTarget;
-    setIsSubmitting(true);
-    setErrorMessage("");
-
-    const formData = new FormData(formElement);
-    const code = String(formData.get("code") ?? "").trim();
-
-    try {
-      const response = await fetch("/api/auth/customer/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customer_token: customerToken, code }),
-      });
-      const responseData = await response.json() as RegistrationResponse;
-
-      if (!response.ok) {
-        const detail = Array.isArray(responseData.detail)
-          ? responseData.detail.map((item) => item.msg).filter(Boolean).join(" ")
-          : responseData.detail;
-        throw new Error(detail || "We couldn’t verify that code. Please try again.");
-      }
-
-      setSuccessMessage(responseData.response || "Your Pine account is ready.");
-      setStep("complete");
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "We couldn’t reach Pine. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function resendVerificationCode() {
-    setIsSubmitting(true);
-    setErrorMessage("");
-
-    try {
-      const response = await fetch("/api/auth/customer/verify", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customer_token: customerToken }),
-      });
-      const responseData = await response.json() as RegistrationResponse;
-
-      if (!response.ok) {
-        const detail = Array.isArray(responseData.detail)
-          ? responseData.detail.map((item) => item.msg).filter(Boolean).join(" ")
-          : responseData.detail;
-        throw new Error(detail || "We couldn’t send a new code. Please try again.");
-      }
-
-      setVerificationMessage(responseData.response || "A new verification code was sent to your phone.");
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "We couldn’t reach Pine. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  return (
-    <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <section
-        className="register-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="register-title"
-      >
-        <button className="modal-close" type="button" onClick={onClose} aria-label="Close registration form">×</button>
-        <span className="eyebrow">A BETTER WAY TO GET WORK DONE</span>
-        <h2 id="register-title">
-          {step === "verify" ? <>Check your <em>phone.</em></> : step === "complete" ? <>You’re <em>in.</em></> : <>Let’s get you <em>started.</em></>}
-        </h2>
-        <p className="modal-intro">
-          {step === "verify"
-            ? "Enter the six-digit code we texted you to finish creating your Pine account."
-            : step === "complete"
-              ? "Your customer account has been verified and created."
-              : "Create your customer account. We’ll text you a code to verify your phone number."}
-        </p>
-
-        {step === "complete" ? (
-          <div className="success-state" role="status">
-            <span className="success-mark">✓</span>
-            <p>{successMessage}</p>
-            <button className="text-button" type="button" onClick={onClose}>Back to Pine</button>
-          </div>
-        ) : step === "verify" ? (
-          <form className="register-form" onSubmit={verifyCustomer}>
-            <p className="verification-note" role="status">{verificationMessage}</p>
-            <label>
-              Verification code
-              <input name="code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" minLength={6} maxLength={6} placeholder="000000" required />
-            </label>
-            {errorMessage && <p className="form-error" role="alert">{errorMessage}</p>}
-            <button className="button button-primary submit-button" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Verifying…" : "Verify phone"}
-              <span aria-hidden="true">↗</span>
-            </button>
-            <button className="text-button resend-button" type="button" onClick={resendVerificationCode} disabled={isSubmitting}>
-              Send a new code
-            </button>
-          </form>
-        ) : (
-          <form className="register-form" onSubmit={submitRegistration}>
-            <div className="form-name-row">
-              <label>
-                First name
-                <input name="first_name" autoComplete="given-name" maxLength={50} required />
-              </label>
-              <label>
-                Last name
-                <input name="last_name" autoComplete="family-name" maxLength={50} required />
-              </label>
-            </div>
-            <label>
-              Email address
-              <input name="email" type="email" autoComplete="email" maxLength={254} required />
-            </label>
-            <label>
-              Phone number
-              <input name="phonenumber" type="tel" autoComplete="tel" placeholder="+1 555 000 0000" required />
-              <small>Include your country code.</small>
-            </label>
-            {errorMessage && <p className="form-error" role="alert">{errorMessage}</p>}
-            <button className="button button-primary submit-button" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Sending…" : "Register"}
-              <span aria-hidden="true">↗</span>
-            </button>
-            <p className="form-footnote">No password or payment details required.</p>
-          </form>
-        )}
-      </section>
-    </div>
-  );
-}
-
 export default function CustomerLandingPage() {
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -529,6 +315,7 @@ export default function CustomerLandingPage() {
             <h2>Put your agent to work.</h2>
             <p>Publish an agent, set a price, keep it live, and earn when people use it. Pine handles discovery, consumer identity, permissions, job records, payments, and payouts.</p>
             <a href="#two-sides" className="feature-link">See how hosting works <span>↗</span></a>
+            <a className="button button-light host-register-link" href="/landing/merchant">Register as a host <span aria-hidden="true">↗</span></a>
           </div>
           <HostMockup />
         </div>
@@ -556,7 +343,7 @@ export default function CustomerLandingPage() {
               <h3>Built an agent?</h3>
               <p>Put it on Pine.</p>
               <ul><li>Publish</li><li>Get hired</li><li>Run jobs</li><li>Get paid</li></ul>
-              <RegisterButton onClick={() => setIsRegisterOpen(true)}>Register</RegisterButton>
+              <a className="button button-primary" href="/landing/merchant">Register <span aria-hidden="true">↗</span></a>
             </article>
           </div>
         </div>
@@ -629,7 +416,7 @@ export default function CustomerLandingPage() {
         </div>
       </footer>
 
-      {isRegisterOpen && <RegistrationModal onClose={() => setIsRegisterOpen(false)} />}
+      {isRegisterOpen && <RegistrationModal role="customer" onClose={() => setIsRegisterOpen(false)} />}
     </main>
   );
 }

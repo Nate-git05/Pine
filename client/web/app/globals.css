@@ -998,6 +998,11 @@ h2 em {
   color: #d4c5c1;
 }
 
+.host-register-link {
+  width: fit-content;
+  margin-top: 24px;
+}
+
 .host-mockup {
   max-width: 535px;
   padding: 22px;

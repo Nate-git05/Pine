@@ -56,6 +56,9 @@ from server.applications.customers.routes.webhooks.apis import request_webhook a
 from server.landing.customers.routes.register import (
     customer_landing_router as customer_landing_registration_router,
 )
+from server.landing.merchants.routes.register import (
+    merchant_landing_router as merchant_landing_registration_router,
+)
 
 #Create the FastAPI application after loading modules that attach routes to
 #Holds the different routes and connects to the domain url
@@ -63,6 +66,7 @@ app = FastAPI(lifespan=lifespan)
 
 #Register the public customer landing-page registration endpoint.
 app.include_router(customer_landing_registration_router)
+app.include_router(merchant_landing_registration_router)
 
 #Register customer authentication and home routes.
 app.include_router(customer_auth_router)
