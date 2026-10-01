@@ -17,6 +17,7 @@ from stripe import StripeClient
 class APIWrapper:
     def __init__(self):
         self.twilio_client = None #flag for twilio client api
+        self.stripe_client = None #shared Stripe API client
 
     #configuring twilio api client
     def configure_twilio_api(self,account_sid=TWILIO_ACCOUNT_SID,
@@ -42,15 +43,15 @@ class APIWrapper:
         return openai_client #returning the openai client
 
     #configuring the Stripe client
-    @staticmethod
     def configure_stripe_client(
+            self,
             api_key:str=STRIPE_API_KEY
         ) -> StripeClient:
-        stripe_client = StripeClient(
+        self.stripe_client = StripeClient(
             api_key=api_key
         )
 
-        return stripe_client
+        return self.stripe_client
 
 #Wrappper for the server notification events 
 class NotificationEvents:

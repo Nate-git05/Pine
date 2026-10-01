@@ -1,3 +1,3 @@
 /// <reference types="expo/types" />
 
-// Expo CLI fills in route types when the development server starts.
+// NOTE: This file should not be edited and should be in your git ignore

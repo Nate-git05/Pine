@@ -21,6 +21,7 @@ from server.applications.customers.schemas.pages.profile_schemas import (
     GoogleRedirectURL,
 )
 from server.applications.customers.services.auth.auth_service import get_current_customer
+from server.config.configuration import GOOGLE_CLIENT_SECRET_FILE
 from server.dependencies import (
     get_google_oauth_info,
     get_relational_db_session,
@@ -39,7 +40,7 @@ def customer_integrate_email(
 ):
     # Configure Google's OAuth flow and the callback registered for this app.
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-        'client_secret.json',
+        GOOGLE_CLIENT_SECRET_FILE,
         scopes=google_api_info.get('google_scopes'),
     )
     flow.redirect_uri = google_api_info.get('redirect_url')
@@ -115,7 +116,7 @@ async def gmail_redirect(
     # Exchange the authorization code and fetch the verified Google account.
     try:
         flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-            'client_secret.json',
+            GOOGLE_CLIENT_SECRET_FILE,
             scopes=google_api_info.get('google_scopes'),
             state=state,
         )

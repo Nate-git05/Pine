@@ -1,0 +1,15 @@
+.git
+.gitignore
+**/.env
+**/.venv
+**/__pycache__
+**/*.py[cod]
+**/node_modules
+**/.expo
+**/.next
+**/client_secret.json
+**/*client*secret*.json
+client/
+customer-client-landing/
+customer_navigation/
+google-cloud-sdk/

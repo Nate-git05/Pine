@@ -5,7 +5,7 @@ from sqlalchemy import (
     String,
     DateTime,
     Integer,
-    ForeignKey
+    ForeignKey,
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -24,6 +24,10 @@ class JobPayments(Base):
     job_description:Mapped[str] = mapped_column(String(length=100), nullable=False)
     job_price:Mapped[int] = mapped_column(Integer, nullable=False)
 
+    #Durable Stripe identifiers let Pine reconcile retries without relying on Redis.
+    offer_id:Mapped[UUID | None] = mapped_column(Uuid, nullable=True, unique=True)
+    stripe_payment_intent_id:Mapped[str | None] = mapped_column(String(length=100), nullable=True, unique=True)
+
     #relationship attributes 
     agent_job_id:Mapped[UUID] = mapped_column(ForeignKey('agent_jobs.id'), nullable=False)
     hired_agent_id:Mapped[UUID] = mapped_column(ForeignKey('hired_agents.id'), nullable=False)
@@ -33,3 +37,4 @@ class JobPayments(Base):
     #audit attributes 
     created_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     paid_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    dispatched_at:Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

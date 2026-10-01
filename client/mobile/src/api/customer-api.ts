@@ -114,6 +114,13 @@ export type PaymentCardsResponse = {
   payments_lst?: PaymentCard[] | null;
 };
 
+export type JobPaymentResponse = {
+  response?: string | null;
+  status: "succeeded" | "requires_action" | "processing";
+  payment_intent_id?: string | null;
+  client_secret?: string | null;
+};
+
 export type ApiMessageResponse = {
   response?: string;
 };
@@ -508,11 +515,17 @@ export class CustomerApi {
     return this.request("/customer/home/payment/add", { method: "POST" });
   }
 
-  payForOffer(paymentId: string, hiredAgentId: string, offerId: string): Promise<ApiMessageResponse> {
+  payForOffer(paymentId: string, hiredAgentId: string, offerId: string): Promise<JobPaymentResponse> {
     return this.request(
       `/customer/home/payment/${encodeURIComponent(paymentId)}/${encodeURIComponent(hiredAgentId)}/${encodeURIComponent(offerId)}`,
       { method: "POST" },
     );
+  }
+
+  confirmJobPayment(paymentIntentId: string): Promise<JobPaymentResponse> {
+    return this.request(`/customer/home/payment/confirm/${encodeURIComponent(paymentIntentId)}`, {
+      method: "POST",
+    });
   }
 
   getOfferEvents(

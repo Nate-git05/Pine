@@ -2,6 +2,7 @@
 from fastapi.requests import Request
 from pydantic_extra_types.phone_numbers import PhoneNumber
 from server.config.apis import APIWrapper
+from stripe import StripeClient
 from server.config.database import (
     CacheDatabase,
     RelationalDatabase,
@@ -59,9 +60,13 @@ async def get_async_http(request:Request):
 def get_client_webhook_url(request:Request) -> str:
     return request.app.state.client_webhook_url
 
-#getting Stripe's api key
-def get_stripe_api_key(request:Request):
-    return request.app.state.stripe_api_key
+#Getting the configured Stripe API client
+def get_stripe_client(request:Request) -> StripeClient:
+    return request.app.state.stripe_client
+
+#Getting the optional Stripe webhook signing secret
+def get_stripe_webhook_secret(request:Request) -> str | None:
+    return request.app.state.stripe_webhook_secret
 
 """getting the server\'s agent"""
 def get_server_agent(request:Request):

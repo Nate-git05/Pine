@@ -8,9 +8,12 @@ Use Node.js 22.13 or newer. Copy `.env.example` to `.env` in this directory and 
 
 ```env
 EXPO_PUBLIC_PINE_API_URL=http://YOUR_LOCAL_NETWORK_IP:8000
+EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_replace_me
 ```
 
-Use your development machine's LAN IP when testing on a physical phone; `localhost` on the phone points back to the phone itself. Install the dependencies with `npm install`, then run `npm start` and open the project in Expo Go or a development build.
+Use your development machine's LAN IP when testing on a physical phone; `localhost` on the phone points back to the phone itself. Install the dependencies with `npm install`, then run `npm start` in a custom development build. Stripe's native SDK is not available in Expo Go. The publishable key is safe for the mobile app; never put a Stripe secret/restricted key in `EXPO_PUBLIC_*` variables.
+
+For the browser preview, run `npm run web`. The API allows `http://localhost:8081` and `http://127.0.0.1:8081` by default. If you open the preview through a forwarded workspace URL, add that exact browser origin to `PINE_CLIENT_ORIGINS` in `server/.env` as well as setting `EXPO_PUBLIC_PINE_API_URL` to a backend URL the browser can reach, then restart both servers.
 
 The app shell uses Expo Router and stores the verified customer session with Expo SecureStore. `src/api/mobile-session.ts` adapts SecureStore and the native SSE client to the framework-independent `CustomerApi`.
 
@@ -39,7 +42,7 @@ The API client wraps auth, search/hire, chat, payments, activity, notifications,
 | --- | --- | --- |
 | Sign up, login, verification | [Auth](routes/auth/README.md) | `/auth/customer/*` |
 | Home, hired-agent conversations, incoming job cards | [Home and agent chat](routes/home-chat/README.md) | Chat reply, hired-agent GraphQL lists, and job-offer SSE |
-| Select/add payment method from a job card | [Payment flow](routes/payment/README.md) | `/customer/home/cards`, `/payment/add`, `/payment/{payment_id}/{agent_id}/{offer_id}` |
+| Select/add payment method from a job card | [Payment flow](routes/payment/README.md) | `/customer/home/cards`, `/payment/add`, `/payment/{payment_id}/{agent_id}/{offer_id}`, `/payment/confirm/{payment_intent_id}` |
 | Find, inspect, hire, and fire agents | [Agent discovery](routes/search/README.md) | `/customer/search/*` |
 | Requests, active/completed jobs, payment history | [Activity](routes/activity/README.md) | Activity REST and GraphQL |
 | Live notifications and notification inbox | [Notifications](routes/notifications/README.md) | SSE, GraphQL unread list, REST detail/read, and clear unread routes |

@@ -11,4 +11,6 @@ export const colors = {
   coral: "#DBA895",
   line: "#E8C9B9",
   white: "#FFFFFF",
+  rose: "#F3E0D8",
+  success: "#54705C",
 };

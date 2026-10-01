@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocalSearchParams } from "expo-router";
 import { Alert, AppState, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import * as WebBrowser from "expo-web-browser";
+import { useStripe } from "@stripe/stripe-react-native";
 import { customerApi, createCustomerEventSource } from "../../src/api/mobile-session";
 import type { HiredAgentProfile, JobOfferEvent, PaymentCard } from "../../src/api/customer-api";
 import { ActionButton } from "../../src/components/action-button";
@@ -12,6 +13,7 @@ import { colors } from "../../src/theme/colors";
 type ChatLine = { id: string; author: "you" | "agent"; text: string };
 
 export default function AgentChatPage() {
+  const { handleNextAction } = useStripe();
   const { hiredAgentId, name } = useLocalSearchParams<{ hiredAgentId: string; name?: string }>();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatLine[]>([]);
@@ -85,7 +87,25 @@ export default function AgentChatPage() {
     setBusy(true);
     setError("");
     try {
-      await customerApi.payForOffer(card.payment_id, hiredAgentId, selectedOffer.offer_id);
+      let payment = await customerApi.payForOffer(card.payment_id, hiredAgentId, selectedOffer.offer_id);
+
+      if (payment.status === "requires_action") {
+        if (!payment.client_secret || !payment.payment_intent_id) {
+          throw new Error("Stripe needs authentication, but Pine did not return the payment details.");
+        }
+
+        const action = await handleNextAction(payment.client_secret);
+        if (action.error) throw new Error(action.error.message);
+        payment = await customerApi.confirmJobPayment(payment.payment_intent_id);
+      }
+
+      if (payment.status === "processing") {
+        setError(payment.response ?? "Payment is processing. Check activity before trying again.");
+        return;
+      }
+      if (payment.status !== "succeeded") {
+        throw new Error(payment.response ?? "Payment did not complete.");
+      }
       setOffers((current) => current.filter((offer) => offer.offer_id !== selectedOffer.offer_id));
       Alert.alert("Job sent", `Pine paid with the card ending in ${card.payment_last4} and sent the job to ${agentTitle}.`);
       setSelectedOffer(null);

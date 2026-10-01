@@ -8,6 +8,22 @@ Customer route handlers are under `applications/customers/routes/`. Shared datab
 
 The customer mobile app and route-by-route contract are documented in [`../client/mobile/README.md`](../client/mobile/README.md). The Expo Router app uses the server routes described there.
 
+## Docker and Cloud Run
+
+Build the image from the repository root so Docker can copy the `server/` package:
+
+```bash
+docker build -f docker/Dockerfile -t pine-server .
+```
+
+The container starts `uvicorn server.app:app` on `0.0.0.0:$PORT` (default `8080`), as required by Cloud Run. It runs as an unprivileged user with one Uvicorn worker. Provide runtime configuration through Cloud Run environment variables and Secret Manager; do not bake `server/.env`, credentials, or `client_secret.json` into the image. The Gmail OAuth routes use `GOOGLE_CLIENT_SECRET_FILE`, which defaults to `client_secret.json` for local development. In Cloud Run, mount the Secret Manager file at a separate path such as `/secrets/google/client_secret.json` and set `GOOGLE_CLIENT_SECRET_FILE` to that path. Store `STRIPE_API_KEY` and `STRIPE_WEBHOOK_SECRET` in Secret Manager, and set `PINE_CLIENT_ORIGINS` to the exact web-client origin(s).
+
+`POSTGRES_URI` must use SQLAlchemy's async PostgreSQL driver form, such as `postgresql+asyncpg://...`; `asyncpg` is installed in the image. Make sure the Cloud Run service can reach Postgres, Redis, and Qdrant. Since job and notification SSE events use process-local queues, start with a single Cloud Run instance for reliable event delivery until those queues move to a shared broker.
+
+## Local browser client CORS
+
+The API enables CORS for the local Expo web preview origins `http://localhost:8081` and `http://127.0.0.1:8081`. Set `PINE_CLIENT_ORIGINS` in `server/.env` to a comma-separated allowlist of the browser client origins when the client is opened from a different host, such as a Codespaces forwarded-port URL. Include only the origin (scheme, host, and port), with no path. Native React Native requests do not use browser CORS, but the Expo web preview does. The allowlist permits the API methods and `Authorization`, `Content-Type`, and `Accept` headers used by the customer client.
+
 ## Customer flows
 
 ### Landing-page registration
@@ -32,8 +48,10 @@ Chat loads separate router and tooling histories from Redis. The router classifi
 
 1. `POST /customer/webhooks/client` verifies the agent signature, checks the customer/hired-agent queue and active-job state, assigns a unique `offer_id`, and caches the offer. If the agent is free and the queue was empty, it publishes an SSE event; otherwise it leaves the offer queued.
 2. `GET /customer/webhooks/client/event` streams the authenticated customer’s offer, including the offer ID, hired-agent ID/name, description, and price.
-3. `GET /customer/home/cards` returns saved cards. `POST /customer/home/payment/{payment_id_str}/{agent_id_str}/{offer_id_str}` validates the selected saved card and exact queued offer, charges through Stripe with a stable idempotency key, creates the job and payment records, removes that exact offer from Redis, and creates customer/merchant notifications.
+3. `GET /customer/home/cards` returns saved cards. `POST /customer/home/payment/{payment_id_str}/{agent_id_str}/{offer_id_str}` validates the selected saved card and exact queued offer, creates/reuses a PaymentIntent keyed to the offer, and confirms it while the customer is present. If the bank requires authentication, the response includes `status: "requires_action"` and the PaymentIntent client secret; the mobile app completes that step with Stripe's native SDK, then calls `POST /customer/home/payment/confirm/{payment_intent_id}`. A succeeded PaymentIntent creates the job and payment rows in one Postgres transaction, removes the exact Redis offer, sends the signed agent request, and creates customer/merchant notifications.
 4. The hired agent completes the job through `PATCH /customer/webhooks/jobs`. Pine records completion, creates notifications, and publishes the next queued offer when available. Agent-created customer requests arrive through `POST /customer/webhooks/requests`; customer answers are sent to the agent from the activity REST route.
+
+`POST /stripe/webhook` verifies Stripe's `Stripe-Signature` header and reconciles `payment_intent.succeeded` events. It retries finalization when Pine cannot deliver the paid job. Set `STRIPE_WEBHOOK_SECRET` from the webhook endpoint created in Stripe. The payment models also store the offer ID, Stripe PaymentIntent ID, and dispatch timestamp so retries can resume without relying on the Redis processed-offer marker.
 
 ### Activity and notifications
 
@@ -52,6 +70,7 @@ The notification GraphQL endpoint is `/customer/notifications` and returns unrea
 - Customer and merchant webhook requests are authenticated with HMAC signatures. Merchant job/request callbacks also verify that the authenticated merchant owns the job.
 - Pending offers are stored in Redis lists keyed by customer and hired-agent IDs. The SSE events and notification events use per-customer `asyncio.Queue` and `Event` objects in server memory.
 - The `GmailIntegration` table has a unique integrated email. Email integrations and hired-agent abilities are represented in the SQLAlchemy models; this repository does not include a migration framework or create/update deployed tables automatically.
+- Before deploying the updated Stripe flow, run [`migrations/2026-10-01-stripe-job-payment-recovery.sql`](migrations/2026-10-01-stripe-job-payment-recovery.sql) against Postgres. It adds and backfills the Stripe customer ID and adds durable offer/payment identifiers. The app does not execute this SQL automatically.
 - `PATCH /customer/notifications/clear` expects the notification IDs in the currently displayed batch, with at most 50 IDs per request.
 
 ## Operational caveats
@@ -60,4 +79,5 @@ The notification GraphQL endpoint is `/customer/notifications` and returns unrea
 - Event queues are process-local. Multiple workers or server instances do not share SSE event signals; use a shared broker before running multiple workers.
 - Job completion is committed before its notification and next-offer events are published. A later failure can leave the database updated while an event is missing; a durable outbox or reconciliation path is needed for reliable recovery.
 - GraphQL pagination uses timestamps as cursors. Rows sharing the same timestamp can be skipped across pages; a compound timestamp/ID cursor would remove that edge case if the client contract is later expanded.
-- Stripe payment, database persistence, and webhook delivery are separate operations. Stripe idempotency prevents repeating the same charge request, but the overall flow is not one atomic transaction.
+- The job and payment rows are committed atomically, and Stripe webhooks can retry dispatch. The remote agent request and Pine's database still cannot share a transaction; the request includes the stable job ID as an idempotency key so an agent endpoint can deduplicate retries.
+- Stripe Tax is not enabled in this code. Do not collect tax until customer location, the service tax classification, the liable entity, and active tax registrations are confirmed.

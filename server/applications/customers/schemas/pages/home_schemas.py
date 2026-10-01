@@ -31,7 +31,10 @@ class AgentsJobRequest(BaseModel):
 
 #schema for the Payment response 
 class PaymentResponse(BaseModel):
-    response:str = None 
+    response:str | None = None
+    status:str
+    payment_intent_id:str | None = None
+    client_secret:str | None = None
 
 #Schema for response from success/failed url for stripe 
 class StripePaymentResponse(BaseModel):

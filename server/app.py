@@ -1,4 +1,7 @@
+import os
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from server.lifespan import lifespan
 
 #Customer authentication routes share the router created in signup.py.
@@ -51,6 +54,7 @@ from server.applications.customers.routes.pages.home.notifications.rest.notifica
 
 # Webhook handlers attach to the router created in job_webhook.py.
 from server.applications.customers.routes.webhooks.apis.job_webhook import customer_api_webhook_router
+from server.applications.customers.routes.webhooks.stripe_webhook import stripe_webhook_router
 from server.applications.customers.routes.webhooks.apis import client_webhook as _client_webhook_routes
 from server.applications.customers.routes.webhooks.apis import request_webhook as _request_webhook_routes
 from server.landing.customers.routes.register import (
@@ -63,6 +67,24 @@ from server.landing.merchants.routes.register import (
 #Create the FastAPI application after loading modules that attach routes to
 #Holds the different routes and connects to the domain url
 app = FastAPI(lifespan=lifespan)
+
+# Browser clients must be allow-listed separately from the bearer-token auth.
+# Set PINE_CLIENT_ORIGINS to a comma-separated list for the deployed client URLs.
+customer_client_origins = [
+    origin.strip().rstrip("/")
+    for origin in os.getenv(
+        "PINE_CLIENT_ORIGINS",
+        "http://localhost:8081,http://127.0.0.1:8081",
+    ).split(",")
+    if origin.strip()
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=customer_client_origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
+)
 
 #Register the public customer landing-page registration endpoint.
 app.include_router(customer_landing_registration_router)
@@ -88,3 +110,4 @@ app.include_router(customer_notification_router)
 
 #Register the webhook router after its client and request handlers are attached.
 app.include_router(customer_api_webhook_router)
+app.include_router(stripe_webhook_router)

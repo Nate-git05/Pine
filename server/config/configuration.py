@@ -73,6 +73,9 @@ STRIPE_API_KEY = os.getenv('STRIPE_API_KEY')
 if not STRIPE_API_KEY:
     raise ValueError('Unable to retrieve the Stripe api key from .env file.')
 
+#Stripe webhook signing secret is configured when the Stripe endpoint is created.
+STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')
+
 #Google client API
 GOOGLE_SCOPES_URL = os.getenv('GOOGLE_SCOPES_URL')
 if not GOOGLE_SCOPES_URL:
@@ -83,3 +86,9 @@ SCOPES = [GOOGLE_SCOPES_URL]
 GOOGLE_REDIRECT_URL = os.getenv('GOOGLE_REDIRECT_URL')
 if not GOOGLE_REDIRECT_URL:
     raise ValueError('Unable to retrieve google redirect url from .env file.')
+
+#The local file path can be replaced with a mounted Secret Manager file in Cloud Run.
+GOOGLE_CLIENT_SECRET_FILE = os.getenv(
+    'GOOGLE_CLIENT_SECRET_FILE',
+    'client_secret.json'
+)

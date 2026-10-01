@@ -27,6 +27,9 @@ class Customer(Base):
     email:EmailStr = mapped_column(String(length=50), nullable=False, index=True, unique=True)
     phonenumber:PhoneNumber = mapped_column(String(length=15), nullable=False, index=False, unique=True)
 
+    #Stripe customer identifier is stored independently of saved payment methods.
+    stripe_customer_id:Mapped[str | None] = mapped_column(String(length=100), nullable=True, unique=True)
+
     #audit information
     created_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

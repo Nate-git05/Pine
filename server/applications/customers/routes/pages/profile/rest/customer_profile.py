@@ -6,7 +6,7 @@ from fastapi import Depends
 from server.applications.customers.services.auth.auth_service import get_current_customer
 from server.dependencies import (
     get_relational_db_session,
-    get_stripe_api_key
+    get_stripe_client,
 )
 from server.models.users.customers import Customer
 from server.models.integrations.stripe_payments.stripe_payment import StripePayment
@@ -24,7 +24,7 @@ from server.applications.customers.schemas.pages.profile_schemas import (
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, and_
 from typing import Annotated
-import stripe
+from stripe import StripeClient
 
 #global router for the customer's profile page
 customer_profile_router = APIRouter(prefix='/profile', tags=['Router for customer\'s profile page'])
@@ -33,7 +33,7 @@ customer_profile_router = APIRouter(prefix='/profile', tags=['Router for custome
 @customer_profile_router.get('/page')
 async def get_customer_profile(customer:Annotated[Customer, Depends(get_current_customer)],
                                session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
-                               stripe_api_key:Annotated[str, Depends(get_stripe_api_key)]):
+                               stripe_client:Annotated[StripeClient, Depends(get_stripe_client)]):
     #database query for the customer
     try:
         #customer payments
@@ -65,9 +65,8 @@ async def get_customer_profile(customer:Annotated[Customer, Depends(get_current_
     if customer_latest_payment:
         try:
             stripe_payment_method = await asyncio.to_thread(
-                stripe.PaymentMethod.retrieve,
-                api_key=stripe_api_key,
-                id=customer_latest_payment.stripe_payment_id
+                stripe_client.v1.payment_methods.retrieve,
+                customer_latest_payment.stripe_payment_id,
             )
         except Exception:
             raise HTTPException(

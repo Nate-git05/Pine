@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { router } from "expo-router";
+import { useCallback, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { Alert, Pressable, Text, View } from "react-native";
 import { customerApi } from "../../src/api/mobile-session";
@@ -39,7 +39,7 @@ export default function ProfilePage() {
     }
   }, []);
 
-  useEffect(() => { void loadProfile(); }, [loadProfile]);
+  useFocusEffect(useCallback(() => { void loadProfile(); }, [loadProfile]));
 
   async function connectGmail() {
     if (!customerApi) return;
@@ -110,50 +110,81 @@ export default function ProfilePage() {
   }
 
   return (
-    <Page title="Profile">
-      {busy ? <Text style={pageStyles.muted}>Updating your profile…</Text> : null}
+    <Page title="You" subtitle="Your account, email connections, and hired agents.">
+      {busy ? <Text style={pageStyles.muted}>Updating your account…</Text> : null}
       {error ? <Text accessibilityRole="alert" style={pageStyles.error}>{error}</Text> : null}
       {profile ? (
-        <DataCard title={profile.customer_name} subtitle={profile.customer_email}>
-          <Text style={pageStyles.muted}>{profile.customer_number}</Text>
-          <Text style={pageStyles.muted}>{profile.number_of_agents} active agents · {profile.jobs_completed} completed jobs</Text>
-          {profile.active_card_last4 ? <Text style={pageStyles.muted}>Last used: {profile.card_type} ending {profile.active_card_last4} · expires {profile.expire_date}</Text> : <Text style={pageStyles.muted}>No card used for a payment yet.</Text>}
-        </DataCard>
+        <View style={{ alignItems: "center", backgroundColor: colors.paper, borderColor: colors.line, borderRadius: 22, borderWidth: 1, flexDirection: "row", gap: 14, padding: 17 }}>
+          <View style={{ alignItems: "center", backgroundColor: colors.rose, borderRadius: 29, height: 58, justifyContent: "center", width: 58 }}><Text style={{ color: colors.wine, fontFamily: "Georgia", fontSize: 25, fontWeight: "700" }}>{profile.customer_name.slice(0, 1).toUpperCase()}</Text></View>
+          <View style={{ flex: 1, gap: 3 }}>
+            <Text style={{ color: colors.wineDeep, fontSize: 17, fontWeight: "700" }}>{profile.customer_name}</Text>
+            <Text style={pageStyles.muted}>{profile.customer_email}</Text>
+            <Text style={pageStyles.muted}>{profile.customer_number}</Text>
+          </View>
+        </View>
       ) : null}
 
-      <DataCard title="Email integrations" subtitle="Connected email accounts are available to agents when their tools need them.">
-        <ActionButton busy={busy} onPress={connectGmail} title="Connect Gmail" />
-        {integrations?.map((integration) => (
-          <View key={integration.id} style={{ borderTopColor: colors.line, borderTopWidth: 1, gap: 5, paddingTop: 12 }}>
-            <Text style={pageStyles.label}>{integration.integrationType} · {integration.integratedEmail}</Text>
-            <Text style={pageStyles.muted}>Connected {new Date(integration.integratedAt).toLocaleDateString()}</Text>
-            <Text onPress={() => removeIntegration(integration.id, integration.integratedEmail)} style={pageStyles.error}>Remove integration</Text>
-          </View>
-        ))}
-        {!integrations?.length ? <Text style={pageStyles.muted}>No email integrations connected.</Text> : null}
-        <Text style={pageStyles.muted}>After Google authorization, close its in-app browser page to refresh the connection list.</Text>
-      </DataCard>
+      <View style={{ gap: 9 }}>
+        <Text style={pageStyles.sectionLabel}>PAYMENT</Text>
+        <DataCard title="Last used payment method" subtitle={profile?.active_card_last4 ? `${profile.card_type ?? "Card"} •••• ${profile.active_card_last4}` : "No card has been used for a job payment yet."}>
+          {profile?.active_card_last4 ? <Text style={pageStyles.muted}>Expires {profile.expire_date ?? "date not available"}</Text> : <Text style={pageStyles.muted}>Pine asks you to choose a saved card when you accept a job offer.</Text>}
+          <Text style={pageStyles.muted}>Card setup and selection happen in the job payment flow.</Text>
+        </DataCard>
+      </View>
 
-      <DataCard title="Your agents">
-        {activeAgents?.map((agent) => (
-          <View key={agent.id} style={{ borderTopColor: colors.line, borderTopWidth: 1, gap: 7, paddingTop: 12 }}>
-            <Text style={pageStyles.label}>{agent.name}</Text>
-            <Text style={pageStyles.muted}>{agent.description}</Text>
-            <Pressable disabled={busy} onPress={() => void changeAgentState(agent.id, "fire")}><Text style={pageStyles.error}>Fire agent</Text></Pressable>
-          </View>
-        ))}
-        {firedAgents?.map((agent) => (
-          <View key={agent.id} style={{ borderTopColor: colors.line, borderTopWidth: 1, gap: 7, paddingTop: 12 }}>
-            <Text style={pageStyles.label}>{agent.name} · Fired</Text>
-            <Text style={pageStyles.muted}>{agent.description}</Text>
-            <Pressable disabled={busy} onPress={() => void changeAgentState(agent.id, "rehire")}><Text style={pageStyles.secondaryText}>Rehire agent</Text></Pressable>
-          </View>
-        ))}
-        {!activeAgents?.length && !firedAgents?.length ? <Text style={pageStyles.muted}>Your hired agents will appear here.</Text> : null}
-      </DataCard>
+      <View style={{ gap: 9 }}>
+        <Text style={pageStyles.sectionLabel}>CONNECTIONS</Text>
+        <DataCard title="Email integrations" subtitle="Connected email accounts can be used by your agents when their tools need them.">
+          {integrations?.map((integration) => (
+            <View key={integration.id} style={{ borderTopColor: colors.line, borderTopWidth: 1, gap: 5, paddingTop: 12 }}>
+              <Text style={pageStyles.label}>{integration.integrationType}</Text>
+              <Text style={pageStyles.body}>{integration.integratedEmail}</Text>
+              <Text style={pageStyles.muted}>Connected {new Date(integration.integratedAt).toLocaleDateString()}</Text>
+              <Pressable accessibilityRole="button" onPress={() => removeIntegration(integration.id, integration.integratedEmail)}><Text style={pageStyles.error}>Remove integration</Text></Pressable>
+            </View>
+          ))}
+          {!integrations?.length ? <Text style={pageStyles.muted}>No email integrations connected.</Text> : null}
+          <ActionButton busy={busy} onPress={connectGmail} title="Connect Gmail" />
+          <Text style={pageStyles.muted}>Google authorization opens in a secure browser. Close it when finished, then refresh this page to see the connection.</Text>
+        </DataCard>
+      </View>
 
-      <Text style={pageStyles.muted}>Profile details are read-only on the current server. Signing out clears this device’s saved session.</Text>
-      <ActionButton onPress={() => void signOut()} title="Sign out" />
+      <View style={{ gap: 9 }}>
+        <Text style={pageStyles.sectionLabel}>YOUR AGENTS</Text>
+        <DataCard title="Hired agents" subtitle={`${profile?.number_of_agents ?? activeAgents?.length ?? 0} active · ${profile?.jobs_completed ?? 0} completed jobs`}>
+          {activeAgents?.map((agent) => (
+            <View key={agent.id} style={{ borderTopColor: colors.line, borderTopWidth: 1, gap: 7, paddingTop: 12 }}>
+              <View style={{ alignItems: "center", flexDirection: "row", justifyContent: "space-between" }}>
+                <Text style={pageStyles.label}>{agent.name}</Text>
+                <View style={pageStyles.pill}><Text style={pageStyles.pillText}>HIRED</Text></View>
+              </View>
+              <Text style={pageStyles.muted}>{agent.description}</Text>
+              <Text style={pageStyles.muted}>Rating ★ {agent.rating.toFixed(1)}</Text>
+              <Pressable disabled={busy} onPress={() => void changeAgentState(agent.id, "fire")}><Text style={pageStyles.error}>Fire agent</Text></Pressable>
+            </View>
+          ))}
+          {firedAgents?.map((agent) => (
+            <View key={agent.id} style={{ borderTopColor: colors.line, borderTopWidth: 1, gap: 7, paddingTop: 12 }}>
+              <View style={{ alignItems: "center", flexDirection: "row", justifyContent: "space-between" }}>
+                <Text style={pageStyles.label}>{agent.name}</Text>
+                <View style={{ ...pageStyles.pill, backgroundColor: colors.sand }}><Text style={{ ...pageStyles.pillText, color: colors.muted }}>FIRED</Text></View>
+              </View>
+              <Text style={pageStyles.muted}>{agent.description}</Text>
+              <Pressable disabled={busy} onPress={() => void changeAgentState(agent.id, "rehire")}><Text style={pageStyles.secondaryText}>Rehire agent</Text></Pressable>
+            </View>
+          ))}
+          {!activeAgents?.length && !firedAgents?.length ? <Text style={pageStyles.muted}>Your hired agents will appear here.</Text> : null}
+        </DataCard>
+      </View>
+
+      <View style={{ gap: 9 }}>
+        <Text style={pageStyles.sectionLabel}>ACCOUNT</Text>
+        <DataCard title="Account details" subtitle="Your profile details are read-only right now.">
+          {profile ? <Text style={pageStyles.muted}>{profile.number_of_agents} active agents · {profile.jobs_completed} completed jobs</Text> : null}
+          <Text style={pageStyles.muted}>Signing out clears this device’s saved Pine session.</Text>
+          <ActionButton onPress={() => void signOut()} title="Sign out" />
+        </DataCard>
+      </View>
     </Page>
   );
 }

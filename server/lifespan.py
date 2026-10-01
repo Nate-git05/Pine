@@ -13,7 +13,7 @@ from server.config.configuration import (
     QDRANT_API_KEY,
     CLIENT_WEBHOOK_URL,
     EMBEDDING_MODEL,
-    STRIPE_API_KEY,
+    STRIPE_WEBHOOK_SECRET,
     ROUTER_AGENT,
     TOOLING_AGENT,
     SCOPES,
@@ -85,7 +85,8 @@ async def lifespan(app:FastAPI):
     #getting the server private attributes
     app.state.server_key = SERVER_SECRET_KEY
     app.state.server_number = PINENUMBER #adding the server's number to the app state
-    app.state.stripe_api_key = STRIPE_API_KEY
+    app.state.stripe_client = api_wrapper.configure_stripe_client()
+    app.state.stripe_webhook_secret = STRIPE_WEBHOOK_SECRET
     app.state.client_webhook_url = CLIENT_WEBHOOK_URL
 
     #configuring the app's http async object

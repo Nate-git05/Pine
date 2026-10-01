@@ -19,8 +19,8 @@ export function DataCard({
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.paper, borderColor: colors.line, borderRadius: 18, borderWidth: 1, gap: 12, padding: 18 },
+  card: { backgroundColor: colors.paper, borderColor: colors.line, borderRadius: 20, borderWidth: 1, gap: 13, padding: 17 },
   heading: { gap: 4 },
-  title: { color: colors.wineDeep, fontSize: 18, fontWeight: "700" },
-  subtitle: { color: colors.muted, fontSize: 14, lineHeight: 20 },
+  title: { color: colors.wineDeep, fontSize: 17, fontWeight: "700" },
+  subtitle: { color: colors.muted, fontSize: 14, lineHeight: 21 },
 });
