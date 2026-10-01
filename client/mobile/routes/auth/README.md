@@ -2,6 +2,8 @@
 
 ## Signup
 
+The public landing-page form does not create a mobile app session. Mobile app account creation uses the SMS auth endpoint below.
+
 `POST /auth/customer/signup` accepts:
 
 ```json
@@ -25,3 +27,5 @@ The verification code and temporary-token lifetime are server configuration deta
 ## Auth header
 
 For protected customer routes send `Authorization: Bearer <verified customer_token>`. The server validates a stored session; the token is not a JWT and should not be decoded. There is no mounted customer logout or session-refresh endpoint in this checkout.
+
+`CustomerApi.signup()` and `CustomerApi.login()` return the temporary verification token. Pass it to `CustomerApi.verify()` with the SMS code; the client saves the verified session token through the configured `CustomerSessionStore`. The app's implementation of that interface must use secure device storage.

@@ -19,6 +19,6 @@ The response contains `returned_agents` (agent ID, name, description, and price)
 ## Hire and fire
 
 - `POST /customer/search/agent/hire/{agent_id}` accepts `{"agent_restrictions":[]}` and returns the new hire ID/name and a response message. Hiring also creates a merchant notification.
-- `PATCH /customer/search/agent/fire/{agent_hire_id}` ends the customer-agent hire. The handler does not define a useful response body.
+- `PATCH /profile/agents/fire/{agent_hire_id}` ends the customer-agent hire. The handler returns a response message.
 
-The backend currently has no endpoint to list the customer's hires after app restart. The hire ID is distinct from the public agent ID and may be needed by future chat contracts. Hiring an agent does not create a chat API in this checkout.
+The returned hire ID is distinct from the public agent ID. Use the hired-agent ID for chat and the incoming job-offer payment flow. Active/fired hires can be reloaded with the profile GraphQL operations described in [Profile](../profile/README.md). Hiring an agent does not create a chat-history endpoint.

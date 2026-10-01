@@ -1,20 +1,31 @@
 # Customer mobile app integration
 
-This folder documents the planned React Native customer app and its integration with the customer backend in `server/`. There is no React Native source, navigation configuration, or screen implementation in this checkout yet. These READMEs describe backend-backed screens and explicitly identify missing backend capabilities; they are not evidence that those screens already exist.
+This folder contains the customer API transport layer and route-by-route integration guide for the React Native customer app. `src/api/customer-api.ts` wraps customer routes mounted by `server/app.py`; React Native screens and navigation are not in this checkout yet.
 
-Use the deployment's API origin as `API_BASE_URL`. The server does not mount an `/api/v1` prefix. For example, the auth route is `${API_BASE_URL}/auth/customer/login`.
+Create one `CustomerApi` instance with the deployment's API origin and a `CustomerSessionStore` adapter backed by the secure-storage library selected for the app. The server does not mount an `/api/v1` prefix. For example, the auth route is `${API_BASE_URL}/auth/customer/login`.
+
+```ts
+import { CustomerApi } from './src/api';
+
+const customerApi = new CustomerApi({
+  baseUrl: API_BASE_URL,
+  sessionStore: secureCustomerSessionStore,
+});
+```
+
+The API client wraps auth, search/hire, chat, payments, activity, notifications, profile, and Gmail integration routes. It stores the verified session token through the injected secure store. SSE methods accept an `EventSourceAdapter`; connect it to the React Native SSE package selected for the app so it can send the required Bearer header.
 
 ## Navigation and API map
 
 | Customer app page/flow | Documentation | Backend surface |
 | --- | --- | --- |
 | Sign up, login, verification | [Auth](routes/auth/README.md) | `/auth/customer/*` |
-| Home, hired-agent conversations, incoming job cards | [Home and agent chat](routes/home-chat/README.md) | Chat reply and job-offer SSE exist; hired-agent list/history APIs are missing |
+| Home, hired-agent conversations, incoming job cards | [Home and agent chat](routes/home-chat/README.md) | Chat reply, hired-agent GraphQL lists, and job-offer SSE |
 | Select/add payment method from a job card | [Payment flow](routes/payment/README.md) | `/customer/home/cards`, `/payment/add`, `/payment/{payment_id}/{agent_id}/{offer_id}` |
 | Find, inspect, hire, and fire agents | [Agent discovery](routes/search/README.md) | `/customer/search/*` |
 | Requests, active/completed jobs, payment history | [Activity](routes/activity/README.md) | Activity REST and GraphQL |
 | Live notifications and notification inbox | [Notifications](routes/notifications/README.md) | SSE, GraphQL unread list, REST detail/read, and clear unread routes |
-| Customer profile/settings | [Profile](routes/profile/README.md) | No mounted profile API currently |
+| Customer profile/settings | [Profile](routes/profile/README.md) | `/profile/*`, `/customer/profile/*` |
 
 ## Shared client/server conventions
 
@@ -27,8 +38,8 @@ Use the deployment's API origin as `API_BASE_URL`. The server does not mount an 
 
 ## Current backend scope and gaps
 
-The server has a customer chat completion route at `POST /customer/home/chat/{hired_agent_id}`. It returns a reply and keeps router/tooling context in Redis, but there is no endpoint to list hired agents or retrieve chat history. The agent tool implementations are not wired yet, so the chat does not submit jobs. Profile APIs are not mounted. Incoming offers arrive over SSE and cannot be recovered through a REST list after a disconnect.
+The server has a customer chat completion route at `POST /customer/home/chat/{hired_agent_id}`. Active/fired hires can be listed through customer profile GraphQL, but there is no endpoint to retrieve chat history. The agent tool implementations are not wired yet, so chat does not submit jobs. Incoming offers arrive over SSE and cannot be recovered through a REST list after a disconnect.
 
-Customer notifications have an authenticated SSE stream, an unread-notification GraphQL query, a REST detail route that marks one notification read, and a REST route that marks all unread notifications read. See [Notifications](routes/notifications/README.md) for the current contract.
+Customer notifications have an authenticated SSE stream, an unread-notification GraphQL query, a REST detail route that marks one notification read, and a REST route that marks supplied notification IDs read. See [Notifications](routes/notifications/README.md) for the current contract.
 
 The customer webhook POST endpoints under `/customer/webhooks` are called by the agent/merchant service into Pine. They are not mobile-client endpoints. The mobile app consumes the corresponding customer SSE stream and then calls the payment endpoint with the offer ID from that event.

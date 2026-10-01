@@ -6,13 +6,13 @@ The home page is the blank starting state before an agent is hired. After hiring
 
 ## Send a chat message
 
-Call authenticated `POST /customer/home/chat/{hired_agent_id}` with the hired-agent row ID (the ID returned when the customer hires an agent), not the public agent ID:
+Call authenticated `POST /customer/home/chat/{hired_agent_id}` with the hired-agent row ID (the ID returned when the customer hires an agent), not the public agent ID. On a fresh launch, load active hires with the `activeHiredAgents` GraphQL query at `/customer/profile/agents` before opening a conversation:
 
 ```json
 {"customer_message":"Can you help me plan this task?"}
 ```
 
-The response is `{"response":"..."}`. The server verifies that the hire belongs to the signed-in customer and is active. Router and tooling context are stored separately in Redis for that customer and hired-agent pair. There is no endpoint to list a customer's hires or retrieve chat history, so the app must get the hired-agent ID from the hire response or another available app state source. Do not assume the backend can bootstrap the home screen's hired-agent list after a fresh install or sign-in.
+The response is `{"response":"..."}`. The server verifies that the hire belongs to the signed-in customer and is active. Router and tooling context are stored separately in Redis for that customer and hired-agent pair. The profile GraphQL query can reload hire IDs after a fresh install or sign-in; no endpoint retrieves chat history.
 
 The chat route uses a router agent and a tooling agent with classification-specific skill instructions. Tool implementations and job submission from chat are not wired yet; this endpoint returns an agent response but does not create a job or payment.
 

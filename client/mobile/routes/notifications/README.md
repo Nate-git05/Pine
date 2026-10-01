@@ -43,6 +43,6 @@ The list contains unread notifications, newest first. The server caps the page s
 ## Read and clear
 
 - `GET /customer/notifications/{notification_id}` retrieves one notification and marks it read. The response includes header, message, type, and a formatted date; the ID is used to select the record, not returned in the response.
-- `PATCH /customer/notifications/clear` marks **all unread notifications** for the customer as read. It does not accept a list of IDs and does not clear only the currently displayed page.
+- `PATCH /customer/notifications/clear` accepts `{"notification_ids":["<uuid>", ...]}` and marks only those customer-owned unread notifications as read. Pass IDs from the displayed batch (1–50 IDs per request).
 
 SSE has no guaranteed replay after disconnect, so use the GraphQL unread list to reload inbox state rather than relying on the event stream as durable history.

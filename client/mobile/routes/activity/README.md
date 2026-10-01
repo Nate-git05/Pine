@@ -4,14 +4,14 @@ The activity surface combines GraphQL lists with REST detail/actions. All routes
 
 ## Lists: GraphQL
 
-POST GraphQL JSON `{ "query": "...", "variables": { ... } }` to `/customer/activity`. Strawberry's default camel-case field names are used. The current query fields are:
+POST GraphQL JSON `{ "query": "...", "variables": { "limit": 5 }, "cursor": false, "last_id_seen": null }` to `/customer/activity`. Strawberry's default camel-case field names are used. Query fields take `limit`; pagination state is read by the server from the top-level GraphQL HTTP body, not from GraphQL field arguments. The current query fields are:
 
-- `jobRequests(limit, lastRequestDate)` for customer requests awaiting/associated with agent handling. Items include request ID/name/description and creation time. The response has a boolean `cursor` and `lastRequestDate`. The schema currently spells the item timestamp field `rrequestCreatedAt` after camel-casing its Python typo.
-- `activeJobs(limit, lastJobDate)` for active jobs. Items contain `agentJobId`, `agentJobName`, `agentJobDescription`, and timestamps; the response has a boolean `cursor` and `lastJobDate`.
-- `completedJobs(limit, lastJobDate)` for completed jobs, with the same item shape and pagination fields.
-- `customerJobPayments(limit, lastPaymentDate)` for customer payment history; amounts are returned in dollars.
+- `jobRequests(limit)` for unhandled customer requests. Items include request ID/name/description and creation time. The response has a boolean `cursor` and `lastRequestDate`. The schema currently spells the item timestamp field `rrequestCreatedAt` after camel-casing its Python typo.
+- `activeJobs(limit)` for active jobs. Items contain `agentJobId`, `agentJobName`, `agentJobDescription`, and timestamps; the response has a boolean `cursor` and `lastJobDate`.
+- `completedJobs(limit)` for completed jobs, with the same item shape and pagination fields.
+- `customerJobPayments(limit)` for customer payment history; amounts are returned in dollars.
 
-The schema has pagination cursors and dates; use the returned cursor/date as the next request's pagination input. GraphQL errors may be returned in the standard `errors` array. Verify the generated schema in the deployed version before binding strongly typed client models because this API is still evolving.
+For the next page, pass the response's `cursor` and matching date (`lastRequestDate`, `lastJobDate`, or `lastPaymentDate`) as top-level `cursor` and `last_id_seen` fields in the next HTTP body. GraphQL errors may be returned in the standard `errors` array. `CustomerApi` implements these top-level cursor fields.
 
 ## Job detail and rating
 
