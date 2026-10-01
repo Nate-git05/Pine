@@ -6,7 +6,7 @@ The customer backend is a FastAPI application exposed as `server.app:app`. `app.
 
 Customer route handlers are under `applications/customers/routes/`. Shared database, cache, event, and agent work lives in `config/`, `services/`, and `applications/customers/agent/`. SQLAlchemy tables are in `models/` and request/response schemas are in `applications/customers/schemas/`.
 
-The customer mobile route-by-route contract is documented in [`../client/mobile/README.md`](../client/mobile/README.md). That directory contains integration documentation, not the React Native app source.
+The customer mobile app and route-by-route contract are documented in [`../client/mobile/README.md`](../client/mobile/README.md). The Expo Router app uses the server routes described there.
 
 ## Customer flows
 
@@ -20,6 +20,7 @@ The public customer and merchant landing forms both collect first name, last nam
 2. `POST /auth/customer/login` finds the account by email and phone number, creates a pending SMS verification, and returns a temporary verification token.
 3. `POST /auth/customer/verify/{customer_token}` verifies the hashed code, creates the customer on signup, and stores a hashed session token. `PATCH /auth/customer/verify/update/{customer_token}` resends a code for a pending verification.
 4. REST routes authenticate the bearer token in `get_current_customer`. GraphQL routes use `get_customer_context`, which validates the same session and reads optional pagination values from the GraphQL request.
+5. `POST /auth/customer/logout` authenticates the current customer, deletes that device's session row, and revokes its token. Other active sessions for the customer remain valid.
 
 ### Agent discovery and chat
 

@@ -26,6 +26,8 @@ The verification code and temporary-token lifetime are server configuration deta
 
 ## Auth header
 
-For protected customer routes send `Authorization: Bearer <verified customer_token>`. The server validates a stored session; the token is not a JWT and should not be decoded. There is no mounted customer logout or session-refresh endpoint in this checkout.
+For protected customer routes send `Authorization: Bearer <verified customer_token>`. The server validates a stored session; the token is not a JWT and should not be decoded.
+
+`POST /auth/customer/logout` revokes the current authenticated session. The mobile client calls it with the Bearer token, then clears the token from SecureStore. If the server cannot be reached, the app still clears the local token and tells the customer that server revocation could not be confirmed.
 
 `CustomerApi.signup()` and `CustomerApi.login()` return the temporary verification token. Pass it to `CustomerApi.verify()` with the SMS code; the client saves the verified session token through the configured `CustomerSessionStore`. The app's implementation of that interface must use secure device storage.

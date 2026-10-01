@@ -23,4 +23,4 @@ There is no endpoint for chat history. The app can list active and fired hires a
 
 The Gmail callback currently returns a server response page rather than an app deep link. The mobile UI should handle that return path explicitly before treating the OAuth flow as a native app handoff.
 
-There are no mounted profile-edit, account-delete, server logout, session-refresh, or saved-card-delete routes. `CustomerApi.logoutLocal()` only clears the token from device storage; it does not revoke the server session.
+There are no mounted profile-edit, account-delete, session-refresh, or saved-card-delete routes. Sign out through `POST /auth/customer/logout`; it revokes the current server session, then the app clears the device token. If offline, the app clears the local token but the server session may remain active until it expires.

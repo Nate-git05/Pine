@@ -89,6 +89,26 @@ export default function ProfilePage() {
     }
   }
 
+  async function signOut() {
+    if (!customerApi) {
+      router.replace("/auth");
+      return;
+    }
+
+    try {
+      await customerApi.logout();
+    } catch (logoutError) {
+      Alert.alert(
+        "Signed out on this device",
+        logoutError instanceof Error
+          ? `Pine could not confirm server session revocation: ${logoutError.message}`
+          : "Pine could not confirm server session revocation. Sign in again when you reconnect.",
+      );
+    } finally {
+      router.replace("/auth");
+    }
+  }
+
   return (
     <Page title="Profile">
       {busy ? <Text style={pageStyles.muted}>Updating your profile…</Text> : null}
@@ -133,9 +153,7 @@ export default function ProfilePage() {
       </DataCard>
 
       <Text style={pageStyles.muted}>Profile details are read-only on the current server. Signing out clears this device’s saved session.</Text>
-      <ActionButton onPress={() => {
-        void customerApi?.logoutLocal().then(() => router.replace("/auth"));
-      }} title="Sign out" />
+      <ActionButton onPress={() => void signOut()} title="Sign out" />
     </Page>
   );
 }

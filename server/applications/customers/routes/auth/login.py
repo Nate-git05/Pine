@@ -1,26 +1,32 @@
 #File for the routes for the customer login
 from fastapi.exceptions import HTTPException
 from fastapi import Depends
+from fastapi.security import HTTPAuthorizationCredentials
 from server.applications.customers.routes.auth.signup import customer_auth_router
 from server.dependencies import (
     get_relational_db_session,
     get_cache_db,
     get_servers_number,
-    get_twilio_client
+    get_twilio_client,
+    get_server_key,
 )
 from server.models.users.customers import Customer
+from server.models.auths.authentications import SessionAuthentication
 from server.models.auths.verifications import (
     SMSVerification,
     VerificationState
 )
 from server.applications.customers.schemas.auth.login import (
     CustomerLogin,
-    CustomerLoginResponse
+    CustomerLoginResponse,
+    CustomerLogoutResponse,
 )
 from server.applications.customers.services.auth.auth_service import (
     generate_code,
     send_message,
-    AuthState
+    AuthState,
+    bearer_scheme,
+    get_current_customer,
 )
 from server.config.database import CacheDatabase
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +35,9 @@ from twilio.rest import Client
 from pydantic_extra_types.phone_numbers import PhoneNumber
 from datetime import datetime, timezone
 from typing import Annotated
-from uuid import uuid4
+from uuid import UUID, uuid4
+import hashlib
+import hmac
 import json
 
 """Route for the customer to login"""
@@ -119,3 +127,48 @@ async def customer_login(customer_info:CustomerLogin,
         token=customer_exp_token,
         response='Pine verification has been sent to you. Via sms.'
     )
+
+
+"""Route to revoke the customer's current authenticated session."""
+@customer_auth_router.post('/logout', response_model=CustomerLogoutResponse)
+async def customer_logout(
+    customer_credentials:Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
+    customer:Annotated[Customer, Depends(get_current_customer)],
+    session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
+    PINE_SERVER_KEY:Annotated[str, Depends(get_server_key)],
+):
+    # Match only this customer's session token, which is stored as an HMAC hash.
+    try:
+        token_uuid = UUID(customer_credentials.credentials)
+    except Exception:
+        raise HTTPException(status_code=401, detail='Invalid customer session token.')
+
+    token_hash = hmac.new(
+        PINE_SERVER_KEY.encode('utf-8'),
+        token_uuid.bytes,
+        hashlib.sha256
+    ).hexdigest().encode('utf-8')
+
+    try:
+        session_query = await session_db.execute(select(SessionAuthentication).where(and_(
+            SessionAuthentication.customer_id == customer.id,
+            SessionAuthentication.session_token == token_hash
+        )))
+        customer_session = session_query.scalar_one_or_none()
+
+        if not customer_session:
+            raise HTTPException(status_code=404, detail='Customer session was not found.')
+
+        # Delete this device's session so the same token cannot authenticate again.
+        await session_db.delete(customer_session)
+        await session_db.commit()
+    except HTTPException:
+        raise
+    except Exception as error:
+        await session_db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail='Unable to end this customer session.'
+        ) from error
+
+    return CustomerLogoutResponse(response='You have been logged out.')

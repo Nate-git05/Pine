@@ -26,3 +26,7 @@ class CustomerLogin(BaseModel):
 class CustomerLoginResponse(BaseModel):
     token:str = None 
     response:str = None
+
+
+class CustomerLogoutResponse(BaseModel):
+    response: str

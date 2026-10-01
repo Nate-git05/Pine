@@ -454,9 +454,13 @@ export class CustomerApi {
     );
   }
 
-  async logoutLocal(): Promise<void> {
-    // The server has no logout endpoint; clear the token from device storage.
-    await this.sessionStore.clearToken();
+  async logout(): Promise<void> {
+    try {
+      await this.request<ApiMessageResponse>("/auth/customer/logout", { method: "POST" });
+    } finally {
+      // Clear the device session even if the network prevents server revocation.
+      await this.sessionStore.clearToken();
+    }
   }
 
   searchAgents(search: SearchAgentsRequest, limit = 10): Promise<SearchAgentsResponse> {
