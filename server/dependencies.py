@@ -66,3 +66,11 @@ def get_stripe_api_key(request:Request):
 """getting the server\'s agent"""
 def get_server_agent(request:Request):
     return request.app.state.pine_agent
+
+"""Oauth2 dependecies"""
+#google
+def get_google_oauth_info(request:Request):
+    return  {
+        'google_scopes':request.app.state.google_scopes,
+        'redirect_url':request.app.state.google_redirect_url
+    }

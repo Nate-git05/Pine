@@ -283,6 +283,13 @@ async def update_customer_code(customer_token:str,
             detail='No verification record matches this request'
         )
 
+    # A consumed verification session cannot be used to generate another code.
+    if customer_verification.verification_state != VerificationState.PENDING:
+        raise HTTPException(
+            status_code=409,
+            detail='This verification code has already been used.'
+        )
+
     new_customer_code = generate_code() #generating new customer code 
     #updating row attributes
     customer_verification.code = new_customer_code

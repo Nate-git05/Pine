@@ -15,7 +15,9 @@ from server.config.configuration import (
     EMBEDDING_MODEL,
     STRIPE_API_KEY,
     ROUTER_AGENT,
-    TOOLING_AGENT
+    TOOLING_AGENT,
+    SCOPES,
+    GOOGLE_REDIRECT_URL
 )
 from server.config.database import (
     RelationalDatabase,
@@ -103,6 +105,11 @@ async def lifespan(app:FastAPI):
         cache_db=cache_database,
         agent_tool_lst=agent_tool_lst
     )
+
+    #Oauth2 api app states
+    #Google
+    app.state.google_scopes = SCOPES
+    app.state.google_redirect_url = GOOGLE_REDIRECT_URL
 
     yield #yields the application running
 

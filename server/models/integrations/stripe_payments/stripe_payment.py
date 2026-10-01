@@ -14,11 +14,6 @@ from enum import StrEnum
 from uuid import UUID, uuid4
 from datetime import datetime
 
-"""Enum for the state of the payment"""
-class PaymentState(StrEnum):
-    ACTIVE='active'
-    INACTIVE='inactive'
-
 """SQL model maps stipe payment -> Postgres"""
 class StripePayment(Base):
     __tablename__ = 'stripe_payments' #name of table in Postgres

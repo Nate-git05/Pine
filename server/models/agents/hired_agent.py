@@ -26,7 +26,7 @@ class HiredAgent(Base):
     id:Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     name:Mapped[str] = mapped_column(String(length=50), nullable=False)
     description:Mapped[str] = mapped_column(String(length=100), nullable=False)
-    price_per_job:Mapped[str] = mapped_column(Integer, nullable=False)
+    price_per_job:Mapped[int] = mapped_column(Integer, nullable=False)
     agent_rating:Mapped[float] = mapped_column(Double, nullable=False, default=0.0)
 
     #relationship attributes
@@ -34,6 +34,11 @@ class HiredAgent(Base):
     customer_id:Mapped[UUID] = mapped_column(ForeignKey('customers.id'), nullable=False)
 
     #agent attributes for state and permissions
+    agent_abilities:Mapped[list[str]] = mapped_column(
+        MutableList.as_mutable(ARRAY(String)),
+        nullable=False,
+        default=list
+    )
     agent_restrictions:Mapped[list[str]] = mapped_column(MutableList.as_mutable(ARRAY(String)), nullable=True)
     agent_state:AgentState = mapped_column(String(length=20), nullable=True)
     agent_imgicon_key:Mapped[str] = mapped_column(String(length=150), nullable=False)

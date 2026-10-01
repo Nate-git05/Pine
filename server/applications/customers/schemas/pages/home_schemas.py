@@ -6,6 +6,7 @@ from pydantic import (
 )
 import strawberry
 from datetime import datetime
+from uuid import UUID
 from server.models.notifications.notification_message import NotificationType
 
 #Schema for the returned stripe payment
@@ -46,6 +47,10 @@ class ReturnedNotification(BaseModel):
 #Schema for the response -> Notifications been cleared
 class NotificationsCleared(BaseModel):
     response:str = None 
+
+#Schema for the IDs in the customer's currently displayed notification batch.
+class NotificationsClearRequest(BaseModel):
+    notification_ids:list[UUID] = Field(min_length=1, max_length=50)
 
 #Schema for the customer request for agent chat
 class AgentChatRequest(BaseModel):

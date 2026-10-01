@@ -1,5 +1,5 @@
 #File for the Tools scheams -> tool fucntions params 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from uuid import UUID
 
 """Schemas for querying the relational database"""
@@ -11,6 +11,11 @@ class HiredAgentInfo(BaseModel):
 #Arguement schemas -> query the agent from hired agent
 class AgentInfo(BaseModel):
     agent_id:UUID
+
+#Argument schema -> check an email connected to the customer
+class CustomerEmailInfo(BaseModel):
+    customer_id:UUID
+    email_name:EmailStr
 
 #Response schemas -> returned agent id 
 class HiredAgentResponse(BaseModel):

@@ -72,3 +72,14 @@ if (not EMBEDDING_MODEL) or (not OPENAI_API_KEY):
 STRIPE_API_KEY = os.getenv('STRIPE_API_KEY')
 if not STRIPE_API_KEY:
     raise ValueError('Unable to retrieve the Stripe api key from .env file.')
+
+#Google client API
+GOOGLE_SCOPES_URL = os.getenv('GOOGLE_SCOPES_URL')
+if not GOOGLE_SCOPES_URL:
+    raise ValueError('Unable to retrieve scopes for google api from .env file.')
+SCOPES = [GOOGLE_SCOPES_URL]
+
+#Google redirect URL
+GOOGLE_REDIRECT_URL = os.getenv('GOOGLE_REDIRECT_URL')
+if not GOOGLE_REDIRECT_URL:
+    raise ValueError('Unable to retrieve google redirect url from .env file.')

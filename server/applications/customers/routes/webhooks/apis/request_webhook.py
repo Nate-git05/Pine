@@ -134,3 +134,5 @@ async def create_cusotmer_job_request(merchant_api_model:Annotated[MerchantAPI, 
             status_code=500,
             detail='Server error. Unable to wake event.'
         )
+
+    return {'response': 'The customer request was saved and its notification was sent.'}

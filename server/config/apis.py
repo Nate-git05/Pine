@@ -42,9 +42,10 @@ class APIWrapper:
         return openai_client #returning the openai client
 
     #configuring the Stripe client
+    @staticmethod
     def configure_stripe_client(
             api_key:str=STRIPE_API_KEY
-        ):
+        ) -> StripeClient:
         stripe_client = StripeClient(
             api_key=api_key
         )

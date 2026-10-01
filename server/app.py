@@ -21,6 +21,22 @@ from server.applications.customers.routes.pages.activity.rest.customer_requests 
 from server.applications.customers.routes.pages.activity.graphql.activity_page import (
     activity_page_graphql_router,
 )
+from server.applications.customers.routes.pages.profile.graphql.integrations.email.customer_emails import (
+    customer_email_integrations_router,
+)
+from server.applications.customers.routes.pages.profile.graphql.customer_agents import (
+    customer_agents_graphql_router,
+)
+from server.applications.customers.routes.pages.profile.rest.customer_profile import (
+    customer_profile_router,
+)
+from server.applications.customers.routes.pages.profile.rest import (
+    customer_agents as _customer_profile_agent_routes,
+    email_integrations as _customer_email_integration_routes,
+)
+from server.applications.customers.routes.pages.profile.rest.oauth2.email import (
+    gmail_integration as _customer_gmail_oauth_routes,
+)
 
 #Customer notification routes.
 from server.applications.customers.routes.pages.home.notifications.notifications_sse import (
@@ -51,6 +67,9 @@ app.include_router(customer_search_router)
 app.include_router(customer_jobs_router)
 app.include_router(customer_requests_router)
 app.include_router(activity_page_graphql_router)
+app.include_router(customer_email_integrations_router)
+app.include_router(customer_agents_graphql_router)
+app.include_router(customer_profile_router)
 
 #Register customer notification routes.
 app.include_router(customer_sse_router)

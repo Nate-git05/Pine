@@ -13,7 +13,8 @@ from server.models.notifications.notification_message import (
 )
 from server.applications.customers.schemas.pages.home_schemas import (
     ReturnedNotification,
-    NotificationsCleared
+    NotificationsCleared,
+    NotificationsClearRequest,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, update
@@ -84,31 +85,15 @@ async def get_customer_notification(notification_id_str:str,
 """Route for the customer current set of notifications"""
 @customer_notification_router.patch('/clear', response_model=NotificationsCleared)
 async def clear_notifications(customer:Annotated[Customer, Depends(get_current_customer)],
-                              session_db:Annotated[AsyncSession, Depends(get_relational_db_session)]):
-    #database query for the customers notifications
-    try:
-        notifications_query = await session_db.execute(select(Notification).where(and_(
-            Notification.customer_id == customer.id,
-            Notification.notification_state == NotificationState.UNREAD
-        )))
-        notifications = notifications_query.scalars().all()
-    except Exception:
-        raise HTTPException(
-            status_code=500,
-            detail='Unable to load your notifications.'
-        )
+                              session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
+                              clear_request:NotificationsClearRequest):
+    # Only clear the IDs sent by the client for its currently displayed batch.
 
-    #check if there are notifications
-    if not notifications:
-        return NotificationsCleared(
-            response='There aren\'t any unread notifications.'
-        )
-
-    #transaction to update the notifications
+    # The ownership filter prevents IDs from another customer's account changing.
     try:
-        #updating all unread notifications for this customer
         await session_db.execute(update(Notification).where(and_(
             Notification.customer_id == customer.id,
+            Notification.id.in_(clear_request.notification_ids),
             Notification.notification_state == NotificationState.UNREAD
         )).values(
                 notification_state=NotificationState.READ,
@@ -119,9 +104,9 @@ async def clear_notifications(customer:Annotated[Customer, Depends(get_current_c
         await session_db.rollback()
         raise HTTPException(
             status_code=500,
-            detail='Unable to clear your notifications.'
+            detail='Unable to clear the selected notifications.'
         )
 
     return NotificationsCleared(
-        response='Notifications were successfully cleared.'
+        response='The selected notifications were successfully cleared.'
     )

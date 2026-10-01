@@ -201,11 +201,11 @@ async def customer_job_payment(payment_id_str:str,
         if not hired_agent:
             raise ValueError('This offer is not from an active hired agent.')
 
-        active_job_query = await session_db.execute(select(AgentJob).where(and_(
+        active_job_query = await session_db.execute(select(AgentJob.id).where(and_(
             AgentJob.hired_agent_id == hired_agent.id,
             AgentJob.customer_id == customer.id,
             AgentJob.job_state == AgentJobState.ACTIVE,
-        )))
+        )).limit(1))
         if active_job_query.scalar_one_or_none():
             raise ValueError('This agent is already working on a job.')
     except ValueError as error:
@@ -394,18 +394,19 @@ async def add_customer_payment(customer:Annotated[Customer, Depends(get_current_
                                stripe_api_key:Annotated[str, Depends(get_stripe_api_key)],
                                session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
                                request:Request):
-    existing_payment_query = await session_db.execute(select(StripePayment.stripe_customer_id).where(
-        StripePayment.customer_id == customer.id
-    ).limit(1))
-    customer_stripe_id = existing_payment_query.scalar_one_or_none()
-    cache_key = f'{str(customer.id)}/stripe'
-    if not customer_stripe_id:
-        pending_setup = await cache_db.retrieve(key=cache_key)
-        if pending_setup:
-            try:
-                customer_stripe_id = json.loads(pending_setup).get('customer_stripe_id')
-            except (TypeError, json.JSONDecodeError):
-                customer_stripe_id = None
+    #database query for customer
+    try:
+        existing_payment_query = await session_db.execute(select(StripePayment.stripe_customer_id).where(
+            StripePayment.customer_id == customer.id
+        ).limit(1))
+        customer_stripe_id = existing_payment_query.scalar_one_or_none()
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail='Unable to retrieve the saved Stripe customer. Please try again.'
+        )
+
+    #check if customer has stripe paymet -> if none create stripe id
     if not customer_stripe_id:
         try:
             customer_stripe = stripe.Customer.create(
@@ -421,6 +422,7 @@ async def add_customer_payment(customer:Annotated[Customer, Depends(get_current_
             ) from error
 
     #caching the customer's payment 
+    cache_key = f'{str(customer.id)}/stripe'
     try:
         data = json.dumps({
             'customer_stripe_id':customer_stripe_id,
@@ -460,10 +462,12 @@ async def add_customer_payment(customer:Annotated[Customer, Depends(get_current_
 @customer_home_router.get('/payment/add/success', response_model=StripePaymentResponse)
 async def created_payment_model(request:Request,
                                 session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
-                                cache_db:Annotated[CacheDatabase, Depends(get_cache_db)]):
+                                cache_db:Annotated[CacheDatabase, Depends(get_cache_db)],
+                                stripe_api_key:Annotated[str, Depends(get_stripe_api_key)]):
     try:
         customer_id = UUID(request.query_params.get('customer_id', ''))
         cache_key = f'{str(customer_id)}/stripe'
+
         cached_setup = await cache_db.retrieve(key=cache_key)
         if not cached_setup:
             raise ValueError('Pending Stripe customer data is missing.')
@@ -487,7 +491,7 @@ async def created_payment_model(request:Request,
 
         #getting the customer's stripe session
         customer_session = stripe.checkout.Session.retrieve(
-                api_key=request.app.state.stripe_api_key,
+                api_key=stripe_api_key,
                 id=query_param_session
         )
 
@@ -499,7 +503,7 @@ async def created_payment_model(request:Request,
         if not setup_intent_id:
             raise ValueError('Stripe setup was not completed.')
         setup_intent = stripe.SetupIntent.retrieve(
-            api_key=request.app.state.stripe_api_key,
+            api_key=stripe_api_key,
             id=setup_intent_id
         )
 
@@ -512,7 +516,7 @@ async def created_payment_model(request:Request,
 
         #retrieving the payment from the payment id 
         payment_method = stripe.PaymentMethod.retrieve(
-            api_key=request.app.state.stripe_api_key,
+            api_key=stripe_api_key,
             id=stripe_payment_id
         )
 

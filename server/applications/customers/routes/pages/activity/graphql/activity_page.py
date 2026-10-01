@@ -37,6 +37,8 @@ class ActivityPageQuery:
     #field for the client side query -> job requests 
     @strawberry.field()
     async def job_requests(self, customer_context:Info, limit:int=5):
+        # Keep client supplied page sizes bounded before building SQL queries.
+        limit = max(1, min(limit, 50))
         try:
             customer:Customer = customer_context.context.get('customer')
             session_db:AsyncSession = customer_context.context.get('database_session')
@@ -98,6 +100,8 @@ class ActivityPageQuery:
     #field for getting the active jobs 
     @strawberry.field
     async def active_jobs(self, customer_context:Info, limit:int=5):
+        # Keep client supplied page sizes bounded before building SQL queries.
+        limit = max(1, min(limit, 50))
         #getting the validated customer info
         try:
             customer:Customer = customer_context.context.get('customer')
@@ -162,6 +166,8 @@ class ActivityPageQuery:
     #field for the client side query -> completed jobs 
     @strawberry.field
     async def completed_jobs(self, customer_context:Info, limit:int=5):
+        # Keep client supplied page sizes bounded before building SQL queries.
+        limit = max(1, min(limit, 50))
         #retrieving the customers context
         try:
             customer:Customer = customer_context.context.get('customer')
@@ -227,6 +233,8 @@ class ActivityPageQuery:
     #client side query for the jobs transactions 
     @strawberry.field 
     async def customer_job_payments(self, customer_context:Info, limit:int=5):
+        # Keep client supplied page sizes bounded before building SQL queries.
+        limit = max(1, min(limit, 50))
         #getting the customer context info 
         try:
             customer:Customer = customer_context.context.get('customer')

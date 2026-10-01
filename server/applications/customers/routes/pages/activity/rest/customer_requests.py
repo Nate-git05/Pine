@@ -156,7 +156,7 @@ async def customer_answer_requst(request_id_str:str,
             customer_request.job_request_state = JobRequestState.HANDLED
             customer_request.handled_at = datetime.now(timezone.utc)
             await session_db.commit()
-            return 
+            return {'response': 'Your response was successfully sent to the agent.'}
     except ClientError as err:
         raise HTTPException(
             status_code=500,

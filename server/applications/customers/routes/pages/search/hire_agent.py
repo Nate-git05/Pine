@@ -42,8 +42,8 @@ async def customer_hire_agent(agent_id_str:str,
             detail='Invalid id. Please try hiring the agent again.'
         )
 
-    #database query for agent 
     try:
+        #database query for agent
         agent_query = await session_db.execute(select(Agent).where(
             Agent.id == agent_id
         ))
@@ -68,6 +68,7 @@ async def customer_hire_agent(agent_id_str:str,
         price_per_job=agent.agent_price_per_job,
         agent_id=agent.id,
         customer_id=customer.id,
+        agent_abilities=agent.agent_skills,
         agent_restrictions=agent_contract.agent_restrictions,
         agent_state=AgentState.ACTIVE,
         agent_imgicon_key=agent.imgicon_storage_key,
@@ -113,41 +114,3 @@ async def customer_hire_agent(agent_id_str:str,
         hired_agent_name=new_agent_hire.name,
         response=f'The agent {new_agent_hire.name} was successfully hired.'
     )
-
-"""Route for the customer to fire the agent."""
-@customer_search_router.patch('/agent/fire/{agent_hire_id}')
-async def customer_fire_agent(agent_hire_id:str,
-                              session_db:Annotated[AsyncSession, Depends(get_relational_db_session)],
-                              customer:Annotated[Customer, Depends(get_current_customer)]):
-    #casting the id str -> uuid 
-    try:
-        hired_agent_id = UUID(agent_hire_id) 
-    except Exception:
-        raise HTTPException(
-            status_code=400,
-            detail='Invalid id. Please try to fire the agent again.'
-        )
-
-    try:
-        #database query for the hired agent 
-        hired_agent_query = await session_db.execute(select(HiredAgent).where(and_(
-            HiredAgent.id == hired_agent_id,
-            HiredAgent.customer_id == customer.id
-        )))
-        hired_agent = hired_agent_query.scalar_one_or_none()
-
-        #check if the agent hired row returned 
-        if not hired_agent:
-            raise HTTPException(
-                status_code=400,
-                detail='Unable to locate the agent. Please try again to fire the agent.'
-            )
-        #updating the agent's state
-        hired_agent.agent_state = AgentState.FIRED
-        await session_db.commit() #commiting changes made to database
-    except Exception:
-        await session_db.rollback() #uncommiting the changes made
-        raise HTTPException(
-            status_code=500,
-            detail='Database error. Please try to fire the agent again.'
-        )

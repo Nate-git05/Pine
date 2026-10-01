@@ -1,13 +1,14 @@
 # File for building the agent's tools.
 from aiohttp import ClientError, ClientSession
 from agents.decorators import tool
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 
 from server.applications.customers.agent.tools.tools_schemas import (
     AgentConversation,
     AgentInfo,
     AgentJob,
     AgentRequest,
+    CustomerEmailInfo,
     DataForRequest,
     HiredAgentInfo,
     HiredAgentResponse,
@@ -17,6 +18,7 @@ from server.applications.customers.agent.tools.tools_schemas import (
 from server.config.database import RelationalDatabase
 from server.models.agents.agent import Agent, AgentState
 from server.models.agents.hired_agent import HiredAgent
+from server.models.integrations.email.gmail_integration import GmailIntegration
 import hashlib
 import hmac
 
@@ -53,6 +55,26 @@ def retrieve_agents_tools(
             job_price=hired_agent.price_per_job,
             agent_restrictions=hired_agent.agent_restrictions,
         ).model_dump_json()
+
+    # Check whether the requested email address belongs to this customer's Gmail integrations.
+    @tool
+    async def check_customer_gmail_email(email_info: CustomerEmailInfo) -> bool:
+        """Return whether this email address is connected to the supplied customer account."""
+        try:
+            async with relational_db.async_session() as session:
+                customer_gmail_query = await session.execute(
+                    select(GmailIntegration.id).where(and_(
+                        GmailIntegration.customer_id == email_info.customer_id,
+                        func.lower(GmailIntegration.integrated_email)
+                        == str(email_info.email_name).lower()
+                    ))
+                )
+                customer_gmail_id = customer_gmail_query.scalar_one_or_none()
+        except Exception:
+            # A failed lookup must not be treated as a verified integration.
+            return False
+
+        return customer_gmail_id is not None
 
     # Resolve the public agent ID to the agent's configured webhook URL.
     @tool
@@ -158,6 +180,7 @@ def retrieve_agents_tools(
     # Return the decorated functions for the tooling agent configuration.
     return [
         get_customer_hired_agent,
+        check_customer_gmail_email,
         get_hired_agent_url,
         pine_request_data,
         create_agent_job_request,

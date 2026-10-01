@@ -223,4 +223,4 @@ async def update_customer_job(merchant_api_model:Annotated[MerchantAPI, Depends(
             detail='Unable to set the event for the customer notification made.'
         )
 
-    return
+    return {'response': 'The job was marked complete and its notifications were sent.'}

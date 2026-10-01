@@ -65,11 +65,11 @@ async def send_cached_job(client_signature:Annotated[str, Header(alias='Signatur
     # Read the queue length without removing its first job.
     try:
         cached_job_count = await cache_db.list_length(cache_key)
-        active_jobs_query = await session_db.execute(select(AgentJob).where(
+        active_jobs_query = await session_db.execute(select(AgentJob.id).where(
             AgentJob.hired_agent_id == customer_info.agent_id,
             AgentJob.customer_id == customer_info.customer_id,
             AgentJob.job_state == AgentJobState.ACTIVE
-        ))
+        ).limit(1))
         active_job = active_jobs_query.scalar_one_or_none()
     except Exception:
         raise HTTPException(
