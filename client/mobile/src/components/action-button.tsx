@@ -1,5 +1,6 @@
 import { ActivityIndicator, Pressable, Text } from "react-native";
 import { pageStyles } from "./page";
+import { colors } from "../theme/colors";
 
 export function ActionButton({
   title,
@@ -19,7 +20,7 @@ export function ActionButton({
       onPress={onPress}
       style={({ pressed }) => [pageStyles.button, pressed && { opacity: 0.85 }, (disabled || busy) && { opacity: 0.6 }]}
     >
-      {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={pageStyles.buttonText}>{title}</Text>}
+      {busy ? <ActivityIndicator color={colors.white} /> : <Text style={pageStyles.buttonText}>{title}</Text>}
     </Pressable>
   );
 }

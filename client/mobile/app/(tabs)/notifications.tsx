@@ -5,6 +5,7 @@ import type { NotificationDetails, NotificationEvent, NotificationList } from ".
 import { ActionButton } from "../../src/components/action-button";
 import { DataCard } from "../../src/components/data-card";
 import { Page, pageStyles } from "../../src/components/page";
+import { colors } from "../../src/theme/colors";
 
 export default function NotificationsPage() {
   const [items, setItems] = useState<NotificationList["returnedNotifications"]>([]);
@@ -94,8 +95,8 @@ export default function NotificationsPage() {
       {!busy && !error && !items?.length ? <Text style={pageStyles.muted}>You’re all caught up.</Text> : null}
       <Modal animationType="fade" onRequestClose={() => setSelected(null)} transparent visible={Boolean(selected)}>
         <Pressable onPress={() => setSelected(null)} style={{ alignItems: "center", backgroundColor: "rgba(15, 30, 22, 0.45)", flex: 1, justifyContent: "center", padding: 24 }}>
-          <View style={{ backgroundColor: "#FFFFFF", borderRadius: 20, gap: 12, padding: 22, width: "100%" }}>
-            <Text style={{ color: "#1D2B24", fontSize: 21, fontWeight: "700" }}>{selected?.notification_header}</Text>
+          <View style={{ backgroundColor: colors.paper, borderRadius: 20, gap: 12, padding: 22, width: "100%" }}>
+            <Text style={{ color: colors.wineDeep, fontSize: 21, fontWeight: "700" }}>{selected?.notification_header}</Text>
             <Text style={pageStyles.body}>{selected?.notification_message}</Text>
             <Text style={pageStyles.muted}>{selected?.notification_type} · {selected?.notification_date}</Text>
             <Text onPress={() => setSelected(null)} style={pageStyles.secondaryText}>Close</Text>

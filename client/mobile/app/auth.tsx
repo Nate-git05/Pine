@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { router } from "expo-router";
-import { Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 import { customerApi } from "../src/api/mobile-session";
 import { ActionButton } from "../src/components/action-button";
 import { Page, pageStyles } from "../src/components/page";
@@ -37,7 +37,11 @@ export default function AuthPage() {
 
   return (
     <Page title={mode === "login" ? "Welcome back" : "Create your account"}>
-      <Text style={pageStyles.body}>Talk to your Pine agent and get work moving from one place.</Text>
+      <View style={styles.welcomeRow}>
+        <View style={styles.accentMark} />
+        <Text style={styles.eyebrow}>YOUR WORK, MOVING FORWARD</Text>
+      </View>
+      <Text style={pageStyles.body}>One conversation can get good work moving. Sign in or create your Pine account to get started.</Text>
       <View style={pageStyles.card}>
         {mode === "signup" && <>
           <Text style={pageStyles.label}>First name</Text>
@@ -46,9 +50,9 @@ export default function AuthPage() {
           <TextInput autoCapitalize="words" onChangeText={setLastName} style={pageStyles.input} value={lastName} />
         </>}
         <Text style={pageStyles.label}>Email</Text>
-        <TextInput autoCapitalize="none" keyboardType="email-address" onChangeText={setEmail} style={pageStyles.input} value={email} />
+        <TextInput autoCapitalize="none" keyboardType="email-address" onChangeText={setEmail} placeholder="you@example.com" placeholderTextColor="#A48D83" style={pageStyles.input} value={email} />
         <Text style={pageStyles.label}>Phone number</Text>
-        <TextInput keyboardType="phone-pad" onChangeText={setPhone} style={pageStyles.input} value={phone} />
+        <TextInput keyboardType="phone-pad" onChangeText={setPhone} placeholder="+1 555 000 0000" placeholderTextColor="#A48D83" style={pageStyles.input} value={phone} />
         {error ? <Text accessibilityRole="alert" style={pageStyles.error}>{error}</Text> : null}
         <ActionButton busy={busy} onPress={submit} title={mode === "login" ? "Continue" : "Create account"} />
         <Text style={pageStyles.muted}>We’ll send a verification code to your phone.</Text>
@@ -56,6 +60,14 @@ export default function AuthPage() {
       <Text onPress={() => { setMode(mode === "login" ? "signup" : "login"); setError(""); }} style={pageStyles.secondaryText}>
         {mode === "login" ? "New to Pine? Create an account" : "Already have an account? Sign in"}
       </Text>
+      <Text style={styles.footnote}>No password needed. We’ll verify your phone with a text message.</Text>
     </Page>
   );
 }
+
+const styles = StyleSheet.create({
+  welcomeRow: { alignItems: "center", flexDirection: "row", gap: 9, marginTop: 3 },
+  accentMark: { backgroundColor: "#DBA895", borderRadius: 5, height: 9, width: 9 },
+  eyebrow: { color: "#9B514D", fontSize: 11, fontWeight: "800", letterSpacing: 1.4 },
+  footnote: { color: "#806B68", fontSize: 12, lineHeight: 18, textAlign: "center" },
+});

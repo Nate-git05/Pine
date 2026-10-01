@@ -14,6 +14,10 @@ Use your development machine's LAN IP when testing on a physical phone; `localho
 
 The app shell uses Expo Router and stores the verified customer session with Expo SecureStore. `src/api/mobile-session.ts` adapts SecureStore and the native SSE client to the framework-independent `CustomerApi`.
 
+## Visual direction
+
+Mobile screens share the customer landing page colors: cream `#FBF3E9`, paper white `#FFFAF4`, sand `#F4EAE0`, taupe `#D9C6B9`, coral `#DBA895`, and wine `#742239`. The launch wordmark uses taupe on white; primary actions use wine for a stronger, readable color pop.
+
 The app currently includes SMS signup/login/verification, agent discovery and hiring, agent chat, streamed job offers with saved-card payment selection, activity lists, notification inbox, profile, email integrations, hire management, and local sign out. The backend does not provide chat history or job-offer replay, so chat messages and offers cannot be restored after the app loses that in-memory state.
 
 Create one `CustomerApi` instance with the deployment's API origin and a `CustomerSessionStore` adapter backed by the secure-storage library selected for the app. The server does not mount an `/api/v1` prefix. For example, the auth route is `${API_BASE_URL}/auth/customer/login`.

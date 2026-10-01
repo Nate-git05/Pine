@@ -1,5 +1,6 @@
 import type { PropsWithChildren } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { colors } from "../theme/colors";
 
 export function DataCard({
   title,
@@ -18,8 +19,8 @@ export function DataCard({
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: "#FFFFFF", borderColor: "#E4EAE5", borderRadius: 18, borderWidth: 1, gap: 12, padding: 18 },
+  card: { backgroundColor: colors.paper, borderColor: colors.line, borderRadius: 18, borderWidth: 1, gap: 12, padding: 18 },
   heading: { gap: 4 },
-  title: { color: "#1D2B24", fontSize: 18, fontWeight: "700" },
-  subtitle: { color: "#65736B", fontSize: 14, lineHeight: 20 },
+  title: { color: colors.wineDeep, fontSize: 18, fontWeight: "700" },
+  subtitle: { color: colors.muted, fontSize: 14, lineHeight: 20 },
 });

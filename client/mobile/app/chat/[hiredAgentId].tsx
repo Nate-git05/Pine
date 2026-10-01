@@ -7,6 +7,7 @@ import type { HiredAgentProfile, JobOfferEvent, PaymentCard } from "../../src/ap
 import { ActionButton } from "../../src/components/action-button";
 import { DataCard } from "../../src/components/data-card";
 import { Page, pageStyles } from "../../src/components/page";
+import { colors } from "../../src/theme/colors";
 
 type ChatLine = { id: string; author: "you" | "agent"; text: string };
 
@@ -132,7 +133,7 @@ export default function AgentChatPage() {
         <Text style={pageStyles.label}>Conversation</Text>
         {!messages.length ? <Text style={pageStyles.muted}>Send a message to start talking with {agentTitle}.</Text> : null}
         {messages.map((line) => (
-          <View key={line.id} style={{ alignSelf: line.author === "you" ? "flex-end" : "flex-start", backgroundColor: line.author === "you" ? "#E4F0E8" : "#F0F3F0", borderRadius: 14, maxWidth: "90%", padding: 12 }}>
+          <View key={line.id} style={{ alignSelf: line.author === "you" ? "flex-end" : "flex-start", backgroundColor: line.author === "you" ? colors.sand : colors.paper, borderColor: colors.line, borderRadius: 14, borderWidth: 1, maxWidth: "90%", padding: 12 }}>
             <Text style={pageStyles.body}>{line.text}</Text>
           </View>
         ))}
@@ -141,8 +142,8 @@ export default function AgentChatPage() {
       </View>
       <Modal animationType="slide" onRequestClose={() => setSelectedOffer(null)} transparent visible={Boolean(selectedOffer)}>
         <View style={{ backgroundColor: "rgba(15, 30, 22, 0.45)", flex: 1, justifyContent: "flex-end" }}>
-          <View style={{ backgroundColor: "#F3F6F2", borderTopLeftRadius: 24, borderTopRightRadius: 24, gap: 14, maxHeight: "80%", padding: 24 }}>
-            <Text style={{ color: "#1D2B24", fontSize: 24, fontWeight: "700" }}>Choose a card</Text>
+          <View style={{ backgroundColor: colors.cream, borderTopLeftRadius: 24, borderTopRightRadius: 24, gap: 14, maxHeight: "80%", padding: 24 }}>
+            <Text style={{ color: colors.wineDeep, fontSize: 24, fontWeight: "700" }}>Choose a card</Text>
             <Text style={pageStyles.body}>Pay ${selectedOffer?.job_price.toFixed(2)} for “{selectedOffer?.job_name}”.</Text>
             <ScrollView contentContainerStyle={{ gap: 10 }}>
               {cards.map((card) => (

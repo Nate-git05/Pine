@@ -1,13 +1,14 @@
 import { Tabs } from "expo-router";
+import { colors } from "../../src/theme/colors";
 
 export default function CustomerTabs() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#174C3A",
-        tabBarInactiveTintColor: "#7B8980",
-        tabBarStyle: { backgroundColor: "#FFFFFF", borderTopColor: "#E4EAE5", height: 62, paddingTop: 6 },
+        tabBarActiveTintColor: colors.wine,
+        tabBarInactiveTintColor: colors.muted,
+        tabBarStyle: { backgroundColor: colors.paper, borderTopColor: colors.line, height: 62, paddingTop: 6 },
         tabBarLabelStyle: { fontSize: 12, fontWeight: "600" },
       }}
     >

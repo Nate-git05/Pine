@@ -7,6 +7,7 @@ import type { CustomerProfile, EmailIntegrationList, HiredAgentList } from "../.
 import { ActionButton } from "../../src/components/action-button";
 import { DataCard } from "../../src/components/data-card";
 import { Page, pageStyles } from "../../src/components/page";
+import { colors } from "../../src/theme/colors";
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
@@ -103,7 +104,7 @@ export default function ProfilePage() {
       <DataCard title="Email integrations" subtitle="Connected email accounts are available to agents when their tools need them.">
         <ActionButton busy={busy} onPress={connectGmail} title="Connect Gmail" />
         {integrations?.map((integration) => (
-          <View key={integration.id} style={{ borderTopColor: "#E4EAE5", borderTopWidth: 1, gap: 5, paddingTop: 12 }}>
+          <View key={integration.id} style={{ borderTopColor: colors.line, borderTopWidth: 1, gap: 5, paddingTop: 12 }}>
             <Text style={pageStyles.label}>{integration.integrationType} · {integration.integratedEmail}</Text>
             <Text style={pageStyles.muted}>Connected {new Date(integration.integratedAt).toLocaleDateString()}</Text>
             <Text onPress={() => removeIntegration(integration.id, integration.integratedEmail)} style={pageStyles.error}>Remove integration</Text>
@@ -115,14 +116,14 @@ export default function ProfilePage() {
 
       <DataCard title="Your agents">
         {activeAgents?.map((agent) => (
-          <View key={agent.id} style={{ borderTopColor: "#E4EAE5", borderTopWidth: 1, gap: 7, paddingTop: 12 }}>
+          <View key={agent.id} style={{ borderTopColor: colors.line, borderTopWidth: 1, gap: 7, paddingTop: 12 }}>
             <Text style={pageStyles.label}>{agent.name}</Text>
             <Text style={pageStyles.muted}>{agent.description}</Text>
             <Pressable disabled={busy} onPress={() => void changeAgentState(agent.id, "fire")}><Text style={pageStyles.error}>Fire agent</Text></Pressable>
           </View>
         ))}
         {firedAgents?.map((agent) => (
-          <View key={agent.id} style={{ borderTopColor: "#E4EAE5", borderTopWidth: 1, gap: 7, paddingTop: 12 }}>
+          <View key={agent.id} style={{ borderTopColor: colors.line, borderTopWidth: 1, gap: 7, paddingTop: 12 }}>
             <Text style={pageStyles.label}>{agent.name} · Fired</Text>
             <Text style={pageStyles.muted}>{agent.description}</Text>
             <Pressable disabled={busy} onPress={() => void changeAgentState(agent.id, "rehire")}><Text style={pageStyles.secondaryText}>Rehire agent</Text></Pressable>

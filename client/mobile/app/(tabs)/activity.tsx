@@ -5,6 +5,7 @@ import { customerApi } from "../../src/api/mobile-session";
 import type { JobList, JobRequestList, PaymentHistory } from "../../src/api/customer-api";
 import { DataCard } from "../../src/components/data-card";
 import { Page, pageStyles } from "../../src/components/page";
+import { colors } from "../../src/theme/colors";
 
 type ActivitySection = "requests" | "active" | "completed" | "payments";
 
@@ -45,8 +46,8 @@ export default function ActivityPage() {
     <Page title="Activity">
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
         {sections.map((item) => (
-          <Pressable key={item} onPress={() => setSection(item)} style={{ backgroundColor: section === item ? "#174C3A" : "#E5EBE6", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10 }}>
-            <Text style={{ color: section === item ? "#FFFFFF" : "#34443D", fontWeight: "600", textTransform: "capitalize" }}>{item}</Text>
+          <Pressable key={item} onPress={() => setSection(item)} style={{ backgroundColor: section === item ? colors.wine : colors.sand, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10 }}>
+            <Text style={{ color: section === item ? colors.white : colors.wineDeep, fontWeight: "600", textTransform: "capitalize" }}>{item}</Text>
           </Pressable>
         ))}
       </View>
